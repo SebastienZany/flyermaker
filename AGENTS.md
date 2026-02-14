@@ -4,7 +4,7 @@
 - ALWAYS consult `PLAN.md` before making changes and keep `PLAN.md` up to date with the current plan/status.
 
 ## Current Phase
-**Phase 7: Undo/Redo** — COMPLETE
+**Phase 10: First Effects Batch** — COMPLETE
 
 ## Phase Status
 
@@ -17,9 +17,9 @@
 | 5 | Image Import | COMPLETE | File dialog, URL import, drag-and-drop import |
 | 6 | Move + Transform | COMPLETE | Move tool dragging, corner resize handles, Transform panel (X/Y/W/H) |
 | 7 | Undo/Redo | COMPLETE | Command history for layer/document edits + keyboard/menu shortcuts |
-| 8 | WebGL Effects Pipeline | NOT STARTED | |
-| 9 | Effects Panel UI | NOT STARTED | |
-| 10 | First Effects Batch | NOT STARTED | |
+| 8 | WebGL Effects Pipeline | COMPLETE | EffectRenderer (WebGL 2, ping-pong FBOs, shader cache), Effect/EffectParam type system, EffectRegistry, per-layer effect stack integrated into Compositor |
+| 9 | Effects Panel UI | COMPLETE | EffectsPanel with auto-generated param controls (sliders, color pickers, checkboxes, selects), add/remove/reorder/toggle, full undo/redo via snapshot history |
+| 10 | First Effects Batch | COMPLETE | Gaussian Blur (separable 2-pass), Bloom (4-pass: extract+H-blur+V-blur+composite with bindOriginal), Vignette (radial darkening), Color Grading (brightness/contrast/saturation/hue/lift/gamma/gain) |
 | 11 | Advanced Effects | NOT STARTED | |
 | 12 | Text + Export + Polish | NOT STARTED | |
 
@@ -29,10 +29,11 @@
 - `src/main.ts`, `src/app.ts`
 - `src/styles/main.css`
 - `src/core/EventBus.ts`
-- `src/model/Document.ts`, `src/model/Layer.ts`
+- `src/model/Document.ts`, `src/model/Layer.ts`, `src/model/History.ts`
 - `src/renderer/Renderer.ts`, `src/renderer/Compositor.ts`, `src/renderer/Viewport.ts`, `src/renderer/RulerRenderer.ts`
-- `src/ui/LayersPanel.ts`
-- `src/effects/EffectStack.ts`
+- `src/ui/LayersPanel.ts`, `src/ui/EffectsPanel.ts`
+- `src/effects/Effect.ts`, `src/effects/EffectRegistry.ts`, `src/effects/EffectRenderer.ts`, `src/effects/EffectStack.ts`, `src/effects/registerEffects.ts`
+- `src/effects/blur.ts`, `src/effects/bloom.ts`, `src/effects/vignette.ts`, `src/effects/colorGrading.ts`
 
 ## Open Issues
 
@@ -63,6 +64,9 @@
 
 - Implemented undo/redo history for layer/document edits with Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z shortcuts, plus Edit menu and options-bar controls.
 
+- Implemented WebGL 2 effects pipeline (Phase 8): EffectRenderer with shader compilation, ping-pong framebuffers, source texture upload with UNPACK_FLIP_Y_WEBGL, per-layer effect caching with bounded eviction, and PassConfig with bindOriginal support for multi-texture composite passes.
+- Built EffectsPanel UI (Phase 9): auto-generated parameter controls from EffectParam definitions, add/remove/reorder/toggle effects, live preview on parameter change, full undo/redo via snapshot-based history with effect cloning.
+- Shipped first effects batch (Phase 10): Gaussian Blur (separable 2-pass H+V), Bloom (4-pass: bright extraction → H-blur → V-blur → composite onto original via u_original sampler), Vignette (radial darkening with center/radius/softness/color), Color Grading (brightness/contrast/saturation/hue shift/lift/gamma/gain).
 
 ## Browser QA Notes
 
