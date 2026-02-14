@@ -127,6 +127,28 @@ button, input, select { font: inherit; }
 .panel-header { padding: 8px 10px; border-bottom: 1px solid var(--border); }
 .panel-header-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .panel-add-btn { height: 20px; padding: 0 8px; font-size: 10px; }
+.add-layer-group { position: relative; }
+.add-layer-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 120px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  padding: 4px;
+  z-index: 20;
+}
+.add-layer-group.open .add-layer-dropdown { display: block; }
+.add-layer-action {
+  width: 100%; text-align: left; padding: 6px 8px;
+  border: none; border-radius: 4px;
+  background: transparent; color: var(--text);
+  cursor: pointer; font-size: 11px;
+}
+.add-layer-action:hover { background: var(--bg-hover); }
 
 .panel-title { text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-dim); font-size: 10px; font-weight: 600; }
 .panel-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
