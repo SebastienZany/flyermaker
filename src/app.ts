@@ -210,6 +210,7 @@ export class App {
     this.root.querySelectorAll<HTMLElement>('.menu-item').forEach((item) => {
       item.addEventListener('click', (event) => {
         event.stopPropagation();
+        this.root.querySelector('.add-layer-group')?.classList.remove('open');
         const menu = item.dataset.menu;
         if (!menu) return;
         this.cancelMenuClose();
