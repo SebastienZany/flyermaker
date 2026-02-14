@@ -10,7 +10,7 @@ export class Renderer {
     const { canvas } = this.ctx;
     this.compositor.draw(this.ctx, doc);
 
-    if (activeTool === 'Move' && doc.activeLayer?.image) {
+    if (activeTool === 'Move' && doc.activeLayer) {
       const layer = doc.activeLayer;
       const handle = 8;
       this.ctx.save();
