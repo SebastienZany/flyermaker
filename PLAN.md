@@ -5,6 +5,16 @@ Building a compositing/effects-focused image editor (not a painting tool). Core 
 
 **UI Reference:** Visual mockups and design files are located in `mockup/` — use these as reference for layout, styling, and component structure during implementation.
 
+**UI Implementation Rule:** Only ship functional UI elements (no decorative or non-working mock controls). Any element that appears in the app must do something meaningful now, while still closely following the visual structure in `mockup/`.
+
+**Visual QA Rule:** Validate UI changes with Playwright screenshots and compare against the reference images in `mockup/` (especially `mockup/v1-initial.png` and `mockup/v2-refined.png`). Iterate until the rendered app matches the intended mockup styling and structure for the implemented scope.
+
+**Playwright Functional QA Rule:** Playwright runs must verify real interactions (import, zoom, transforms, layer operations, etc.), not just first-load appearance checks.
+
+**Build Tag Rule:** Every build must expose a visible build tag in the app chrome (for example in the menubar/status bar) so testers can immediately confirm which build is running.
+
+**E2E Test Suite Rule:** Maintain an automated Playwright end-to-end suite that validates viewport/ruler/document-size behavior and other core interactions on every iteration.
+
 ## Tech Stack
 - **TypeScript + Vite** — type safety, fast HMR
 - **Canvas 2D** — layer compositing via `globalCompositeOperation` (all 16 blend modes)
