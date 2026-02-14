@@ -34,11 +34,6 @@ interface DocumentSnapshot {
   layers: LayerSnapshot[];
 }
 
-const BLEND_OPTIONS: BlendMode[] = [
-  'source-over', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn',
-  'hard-light', 'soft-light', 'difference', 'exclusion', 'hue', 'saturation', 'color', 'luminosity'
-];
-
 const TOOL_HELP: Record<string, string> = {
   Move: 'Move tool: drag selected layers to reposition. Drag corner handles to resize.',
   Select: 'Select tool: keeps layer focus while you adjust transform/layer settings.',
@@ -98,6 +93,20 @@ export class App {
           const layer = this.doc.layers.find((entry) => entry.id === id);
           if (!layer) return;
           layer.visible = !layer.visible;
+        });
+      },
+      onChangeOpacity: (id, opacity) => {
+        this.applyDocumentChange(() => {
+          const layer = this.doc.layers.find((entry) => entry.id === id);
+          if (!layer) return;
+          layer.opacity = opacity;
+        });
+      },
+      onChangeBlendMode: (id, blendMode) => {
+        this.applyDocumentChange(() => {
+          const layer = this.doc.layers.find((entry) => entry.id === id);
+          if (!layer) return;
+          layer.blendMode = blendMode;
         });
       }
     });
@@ -193,33 +202,6 @@ export class App {
     this.root.querySelector('#zoom-in')?.addEventListener('click', () => this.applyZoom(0.05));
     this.root.querySelector('#zoom-out')?.addEventListener('click', () => this.applyZoom(-0.05));
     this.root.querySelector('#zoom-fit')?.addEventListener('click', () => this.fitToViewport());
-
-    this.root.querySelector('#blend-select')?.addEventListener('change', (event) => {
-      this.applyDocumentChange(() => {
-        const layer = this.doc.activeLayer;
-        if (!layer) return;
-        layer.blendMode = (event.target as HTMLSelectElement).value as BlendMode;
-      });
-    });
-
-    this.root.querySelector('#opacity-input')?.addEventListener('change', (event) => {
-      this.applyDocumentChange(() => {
-        const layer = this.doc.activeLayer;
-        if (!layer) return;
-        const value = Math.min(100, Math.max(0, Number((event.target as HTMLInputElement).value.replace('%', '')) || 0));
-        layer.opacity = value / 100;
-      });
-    });
-
-    this.root.querySelector('#opacity-track')?.addEventListener('click', (event) => {
-      this.applyDocumentChange(() => {
-        const layer = this.doc.activeLayer;
-        if (!layer) return;
-        const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-        const ratio = ((event as MouseEvent).clientX - rect.left) / rect.width;
-        layer.opacity = Math.min(1, Math.max(0, ratio));
-      });
-    });
 
     for (const key of ['x', 'y', 'w', 'h'] as const) {
       this.root.querySelector<HTMLInputElement>(`#transform-${key}`)?.addEventListener('change', () => this.applyTransformInputs());
@@ -618,14 +600,6 @@ export class App {
   }
 
   private syncLayerControls(): void {
-    const layer = this.doc.activeLayer;
-    const blend = this.root.querySelector<HTMLSelectElement>('#blend-select');
-    const opacityInput = this.root.querySelector<HTMLInputElement>('#opacity-input');
-    const fill = this.root.querySelector<HTMLElement>('#opacity-fill');
-    if (blend) blend.value = layer?.blendMode ?? 'source-over';
-    const opacityPercent = Math.round((layer?.opacity ?? 1) * 100);
-    if (opacityInput) opacityInput.value = `${opacityPercent}%`;
-    if (fill) fill.style.width = `${opacityPercent}%`;
     this.syncTransformPanel();
   }
 
@@ -697,7 +671,7 @@ export class App {
       <div class="main">
         <div class="toolbar"><button class="tool-btn active" data-tool="Move" data-info="Move tool: drag a selected layer to reposition it. Drag corner handles to resize.">Move</button><button class="tool-btn" data-tool="Select" data-info="Select tool: keeps layer focus without moving; useful when adjusting panel values.">Select</button><button class="tool-btn" data-tool="Hand" data-info="Hand tool: click-drag in the canvas to pan the whole document view.">Hand</button><button class="tool-btn" data-tool="Zoom" data-info="Zoom tool: use wheel or +/- controls to zoom the entire document and rulers in 5% increments.">Zoom</button></div>
         <div class="canvas-wrapper"><canvas id="ruler-h" class="ruler-h" height="20"></canvas><div class="canvas-with-ruler"><canvas id="ruler-v" class="ruler-v" width="20"></canvas><div class="canvas-area"><div id="canvas-wrap" class="canvas-wrap"><canvas id="main-canvas" width="800" height="600"></canvas></div><div class="zoom-controls"><button class="zoom-btn" id="zoom-out" data-info="Zoom out by 5%.">−</button><div class="zoom-level" id="zoom-level">100%</div><button class="zoom-btn" id="zoom-in" data-info="Zoom in by 5%.">+</button><button class="zoom-btn" id="zoom-fit" data-info="Fit: scales the entire document to fit inside the current canvas viewport.">Fit</button></div></div></div></div>
-        <div class="panels-right"><div class="panel"><div class="panel-header panel-header-actions"><span class="panel-title">Layers</span><button id="add-layer" class="opt-btn panel-add-btn" data-info="Create a new empty layer at the document center.">+ Layer</button></div><div class="panel-body"><div class="blend-row"><select id="blend-select" class="blend-select">${BLEND_OPTIONS.map((value) => `<option value="${value}">${value}</option>`).join('')}</select></div><div class="opacity-row"><span class="opacity-label">Opacity</span><div class="opacity-track" id="opacity-track"><div class="opacity-fill" id="opacity-fill"></div></div><input id="opacity-input" class="opacity-input" value="100%"></div><div id="layers-list" class="layers-list"></div></div></div><div class="panel"><div class="panel-header"><span class="panel-title">Transform</span></div><div class="panel-body transform-grid"><label>X <input id="transform-x" class="opt-select" type="number"></label><label>Y <input id="transform-y" class="opt-select" type="number"></label><label>W <input id="transform-w" class="opt-select" type="number"></label><label>H <input id="transform-h" class="opt-select" type="number"></label></div></div></div>
+        <div class="panels-right"><div class="panel"><div class="panel-header panel-header-actions"><span class="panel-title">Layers</span><button id="add-layer" class="opt-btn panel-add-btn" data-info="Create a new empty layer at the document center.">+ Layer</button></div><div class="panel-body"><div id="layers-list" class="layers-list"></div></div></div><div class="panel"><div class="panel-header"><span class="panel-title">Transform</span></div><div class="panel-body transform-grid"><label>X <input id="transform-x" class="opt-select" type="number"></label><label>Y <input id="transform-y" class="opt-select" type="number"></label><label>W <input id="transform-w" class="opt-select" type="number"></label><label>H <input id="transform-h" class="opt-select" type="number"></label></div></div></div>
       </div>
       <div class="statusbar"><div class="status-item status-help-only" id="status-help">Move tool: drag selected layers to reposition. Drag corner handles to resize.</div></div>
       <input id="file-input" type="file" accept="image/*" hidden />
