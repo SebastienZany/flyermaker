@@ -1,7 +1,7 @@
 # FlyerMaker — Status Tracker
 
 ## Current Phase
-**Phase 7: Undo/Redo** — COMPLETE
+**Phase 10: First Effects Batch** — COMPLETE
 
 ## Phase Status
 
@@ -14,9 +14,9 @@
 | 5 | Image Import | COMPLETE | File dialog, URL import, drag-and-drop import |
 | 6 | Move + Transform | COMPLETE | Move tool dragging, corner resize handles, Transform panel (X/Y/W/H) |
 | 7 | Undo/Redo | COMPLETE | Command history for layer/document edits + keyboard/menu shortcuts |
-| 8 | WebGL Effects Pipeline | NOT STARTED | |
-| 9 | Effects Panel UI | NOT STARTED | |
-| 10 | First Effects Batch | NOT STARTED | |
+| 8 | WebGL Effects Pipeline | COMPLETE | WebGL shader pipeline for per-layer effects with automatic 2D fallback. |
+| 9 | Effects Panel UI | COMPLETE | Added per-layer Effects panel with toggles/sliders/reset controls. |
+| 10 | First Effects Batch | COMPLETE | Exposure, brightness, contrast, saturation, and hue effects shipped. |
 | 11 | Advanced Effects | NOT STARTED | |
 | 12 | Text + Export + Polish | NOT STARTED | |
 
@@ -59,6 +59,7 @@
 - Restored a visible build tag in the menubar chrome and fixed zoom-center math edge cases for wheel zoom near viewport edges.
 
 - Implemented undo/redo history for layer/document edits with Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z shortcuts, plus Edit menu and options-bar controls.
+- Implemented a WebGL-based effects pipeline, integrated an Effects panel, and shipped a first color-effects batch (exposure, brightness, contrast, saturation, hue) with undo/redo support.
 
 
 ## Browser QA Notes

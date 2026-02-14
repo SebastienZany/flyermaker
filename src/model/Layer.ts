@@ -10,7 +10,19 @@ export interface ImageContent {
 
 export type LayerContent = ImageContent;
 
-export type LayerEffect = never; // placeholder for future effects
+export type LayerEffectType = 'exposure' | 'brightness' | 'contrast' | 'saturation' | 'hue';
+
+export interface LayerEffect {
+  id: string;
+  type: LayerEffectType;
+  name: string;
+  enabled: boolean;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  defaultValue: number;
+}
 
 export class Layer {
   readonly id: string;

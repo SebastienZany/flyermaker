@@ -161,3 +161,12 @@ button, input, select { font: inherit; }
 .transform-grid { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
 .transform-grid label { display:flex; flex-direction:column; gap:4px; color: var(--text-dim); font-size:10px; }
 .transform-grid input { width:100%; }
+
+.effects-panel { gap: 10px; }
+.effects-empty { color: var(--text-dim); font-size: 11px; }
+.effect-row { display: flex; flex-direction: column; gap: 6px; padding: 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-dark); }
+.effect-header { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 6px; }
+.effect-name { color: var(--text); font-size: 11px; }
+.effect-value { color: var(--text-dim); font-family: 'SF Mono','Menlo',monospace; font-size: 10px; }
+.effect-slider { width: 100%; accent-color: var(--accent); }
+.effect-reset { height: 20px; padding: 0 6px; font-size: 10px; }
