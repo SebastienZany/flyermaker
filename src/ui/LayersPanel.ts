@@ -28,10 +28,16 @@ export class LayersPanel {
         };
 
         const info = document.createElement('div');
-        info.innerHTML = `
-          <div class="layer-name">${layer.name}</div>
-          <div class="layer-meta">${layer.image ? `${layer.image.width}×${layer.image.height}` : 'Empty'} · ${Math.round(layer.opacity * 100)}%</div>
-        `;
+
+        const name = document.createElement('div');
+        name.className = 'layer-name';
+        name.textContent = layer.name;
+
+        const meta = document.createElement('div');
+        meta.className = 'layer-meta';
+        meta.textContent = `${layer.image ? `${layer.image.width}×${layer.image.height}` : 'Empty'} · ${Math.round(layer.opacity * 100)}%`;
+
+        info.append(name, meta);
 
         const remove = document.createElement('button');
         remove.className = 'layer-lock';
