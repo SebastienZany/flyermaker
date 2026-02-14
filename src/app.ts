@@ -281,6 +281,8 @@ export class App {
     const addLayerGroup = this.root.querySelector('.add-layer-group');
     addLayerBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
+      this.activeMenu = null;
+      this.syncMenuState();
       addLayerGroup?.classList.toggle('open');
     });
     this.root.querySelectorAll<HTMLElement>('.add-layer-action').forEach((item) => {
