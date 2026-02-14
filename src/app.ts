@@ -701,7 +701,19 @@ export class App {
     this.syncHistoryControls();
   }
 
+  private flushPendingParamCommit(): void {
+    if (this.paramCommitTimer !== null) {
+      window.clearTimeout(this.paramCommitTimer);
+      this.paramCommitTimer = null;
+    }
+    if (this.effectParamBefore) {
+      this.commitHistoryEntry(this.effectParamBefore);
+      this.effectParamBefore = null;
+    }
+  }
+
   private applyDocumentChange(change: () => void): void {
+    this.flushPendingParamCommit();
     const before = this.captureSnapshot();
     change();
     this.commitHistoryEntry(before);
@@ -709,6 +721,7 @@ export class App {
   }
 
   private undo(): void {
+    this.flushPendingParamCommit();
     const snapshot = this.history.undo();
     if (!snapshot) return;
     this.restoreSnapshot(snapshot);
@@ -717,6 +730,7 @@ export class App {
   }
 
   private redo(): void {
+    this.flushPendingParamCommit();
     const snapshot = this.history.redo();
     if (!snapshot) return;
     this.restoreSnapshot(snapshot);

@@ -51,6 +51,8 @@
 - **Vignette smoothstep edge order:** `smoothstep` arguments were in wrong order, producing inverted falloff. Fixed.
 - **Effect cache growth:** Cache was unbounded. Fixed with per-layer eviction (one cached canvas per layer).
 - **Slider destruction during param updates (P1):** Every slider `oninput` event triggered a full `refreshUI` which rebuilt the effects panel DOM, destroying the active slider mid-drag. Fixed by skipping effects panel rebuild during param updates (`skipEffectsPanelRender` flag) and debouncing history commits (one undo entry per drag session, not per tick).
+- **Stale param-history timer vs undo/redo (P1):** The 300ms debounced param commit timer was never cancelled when undo/redo or other document changes ran. If a user tweaked a param then hit Undo within 300ms, the stale timer would fire, pushing an out-of-order history entry and clearing the redo stack. Fixed by adding `flushPendingParamCommit()` called at the start of `undo()`, `redo()`, and `applyDocumentChange()`.
+- **Integer shader uniforms sent via uniform1f (P2):** All numeric uniforms were dispatched with `uniform1f`, but WebGL requires `uniform1i` for `int`/`sampler` uniforms. Added `UniformInt` tagged wrapper type and `uniformInt()` helper; `drawPass` now checks for the tag and uses `uniform1i` accordingly.
 
 ## Completed Milestones
 

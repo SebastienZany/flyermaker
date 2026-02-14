@@ -1,4 +1,4 @@
-import type { LayerEffect, UniformMap } from './Effect';
+import type { LayerEffect, UniformMap, UniformInt } from './Effect';
 import { effectRegistry } from './EffectRegistry';
 
 const VERTEX_SHADER = `#version 300 es
@@ -219,6 +219,8 @@ export class EffectRenderer {
       if (loc === null) continue;
       if (typeof value === 'boolean') {
         gl.uniform1i(loc, value ? 1 : 0);
+      } else if (typeof value === 'object' && !Array.isArray(value) && (value as UniformInt).__int) {
+        gl.uniform1i(loc, (value as UniformInt).value);
       } else if (typeof value === 'number') {
         gl.uniform1f(loc, value);
       } else if (Array.isArray(value)) {

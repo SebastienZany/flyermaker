@@ -43,7 +43,9 @@ export interface PassConfig {
   bindOriginal?: boolean;
 }
 
-export type UniformValue = number | number[] | boolean;
+export interface UniformInt { __int: true; value: number; }
+export function uniformInt(value: number): UniformInt { return { __int: true, value }; }
+export type UniformValue = number | number[] | boolean | UniformInt;
 export type UniformMap = Record<string, UniformValue>;
 
 export interface EffectDefinition {
