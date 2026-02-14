@@ -39,6 +39,18 @@
 
 - URL import currently depends on remote host CORS behavior and network availability.
 
+## Recent Bug Fixes (Post Phase 10)
+
+- **Ping-pong texture overwrite (P1):** Multi-pass effects after other effects (e.g., Color Grading → Bloom) would overwrite the effect's input texture during intermediate passes. Fixed by adding a dedicated third texture (`effectOriginalTexture`) that snapshots the effect's input via blit before multi-pass processing begins. This texture lives outside the ping-pong pair and is stable across all passes.
+- **u_original binding:** Was using global source texture instead of per-effect input in composite passes. Fixed to use the snapshot texture so stacked effects compose correctly.
+- **Color grading lift default:** Lift parameter defaulted to `[1,1,1]` instead of `[0,0,0]`, causing incorrect identity behavior. Fixed.
+- **NaN param input:** Typing non-numeric values in effect parameter number inputs would propagate NaN to WebGL uniforms. Added NaN guard with fallback to current slider value.
+- **NaN fallback staleness:** The NaN fallback initially used `param.value` (captured at render time), which goes stale after slider interactions without a full panel re-render. Fixed to use `slider.value` which is always kept in sync.
+- **Y-flip:** Source textures were uploaded without `UNPACK_FLIP_Y_WEBGL`, causing vertically flipped effect output. Fixed.
+- **Bloom compositing:** Original image was lost through blur passes. Fixed with `bindOriginal`/`u_original` sampler pattern.
+- **Vignette smoothstep edge order:** `smoothstep` arguments were in wrong order, producing inverted falloff. Fixed.
+- **Effect cache growth:** Cache was unbounded. Fixed with per-layer eviction (one cached canvas per layer).
+
 ## Completed Milestones
 
 - Established Vite/TypeScript project skeleton and panel-based UI.

@@ -223,7 +223,7 @@ src/
 
 **Non-destructive effects:** Each layer stores source pixels unchanged. The effect stack is metadata. `EffectRenderer` processes source → output on demand. Changing a param just re-runs shaders — original data is never touched.
 
-**WebGL ping-pong for multi-pass:** Two framebuffers alternate as input/output. Bloom needs 3+ passes (threshold extract → H-blur → V-blur → composite). The ping-pong pattern handles arbitrary pass counts cleanly.
+**WebGL ping-pong for multi-pass:** Two framebuffers alternate as input/output. Bloom needs 3+ passes (threshold extract → H-blur → V-blur → composite). The ping-pong pattern handles arbitrary pass counts cleanly. A dedicated third texture (`effectOriginalTexture`) snapshots the effect's input before multi-pass processing begins — this is necessary because intermediate passes overwrite the ping-pong textures, so any pass that needs the pre-effect image (via `bindOriginal`/`u_original`) must read from this stable snapshot instead.
 
 **Effect caching:** Each layer caches its processed (post-effects) canvas. Invalidated when: source pixels change, effect params change, effects added/removed/reordered. If nothing changed, Compositor reuses the cached result. This makes viewport changes (zoom/pan) instant.
 
@@ -305,7 +305,7 @@ This works well at current complexity. If the effects panel (Phase 9) introduces
 
 ### Layer Effects System (Phases 8–10)
 
-Each `Layer` has an `effects: LayerEffect[]` array. A `LayerEffect` references an `EffectDefinition` by ID and stores per-instance parameter values. The `EffectsPanel` auto-generates UI controls from `EffectParam` type definitions. The `EffectRenderer` processes effects through a WebGL 2 ping-pong pipeline, with per-layer caching (bounded to one cached canvas per layer, evicted on param change). The `Compositor` checks each layer for enabled effects and routes through WebGL processing before Canvas 2D compositing. Multi-texture support via `PassConfig.bindOriginal` enables effects like bloom that need to reference the original source in a composite pass. Snapshot-based undo/redo deep-clones effect params to capture/restore effect state.
+Each `Layer` has an `effects: LayerEffect[]` array. A `LayerEffect` references an `EffectDefinition` by ID and stores per-instance parameter values. The `EffectsPanel` auto-generates UI controls from `EffectParam` type definitions (with NaN guards on number inputs falling back to the current slider value). The `EffectRenderer` processes effects through a WebGL 2 ping-pong pipeline with three textures: two for ping-pong alternation, plus a dedicated `effectOriginalTexture` that snapshots the effect's input before multi-pass processing (preventing intermediate passes from overwriting data needed by composite passes). Per-layer caching is bounded to one cached canvas per layer, evicted on param change. The `Compositor` checks each layer for enabled effects and routes through WebGL processing before Canvas 2D compositing. Multi-texture support via `PassConfig.bindOriginal` enables effects like bloom that need to reference the pre-effect image via `u_original` sampler in a composite pass. Snapshot-based undo/redo deep-clones effect params to capture/restore effect state.
 
 ## Verification
 Each phase: `npx vite dev` + visual check + Playwright screenshot. Unit tests (`vitest`) for model/math. The key end-to-end test: import image → add bloom effect → adjust intensity → change blend mode → export PNG → verify output.
