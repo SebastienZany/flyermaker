@@ -530,10 +530,14 @@ export class App {
     this.applyDocumentChange(() => {
       const layer = this.doc.activeLayer;
       if (!layer) return;
-      layer.x = Number(this.root.querySelector<HTMLInputElement>('#transform-x')?.value ?? layer.x);
-      layer.y = Number(this.root.querySelector<HTMLInputElement>('#transform-y')?.value ?? layer.y);
-      layer.width = Math.max(20, Number(this.root.querySelector<HTMLInputElement>('#transform-w')?.value ?? layer.width));
-      layer.height = Math.max(20, Number(this.root.querySelector<HTMLInputElement>('#transform-h')?.value ?? layer.height));
+      const parse = (selector: string, fallback: number) => {
+        const v = Number(this.root.querySelector<HTMLInputElement>(selector)?.value);
+        return Number.isFinite(v) ? v : fallback;
+      };
+      layer.x = parse('#transform-x', layer.x);
+      layer.y = parse('#transform-y', layer.y);
+      layer.width = Math.max(20, parse('#transform-w', layer.width));
+      layer.height = Math.max(20, parse('#transform-h', layer.height));
     });
   }
 

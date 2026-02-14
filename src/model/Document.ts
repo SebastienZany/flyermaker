@@ -13,8 +13,13 @@ export class DocumentModel {
   }
 
   deleteLayer(id: string): void {
-    this.layers = this.layers.filter((layer) => layer.id !== id);
-    if (this.activeLayerId === id) this.activeLayerId = this.layers.length ? this.layers[this.layers.length - 1].id : null;
+    const idx = this.layers.findIndex((layer) => layer.id === id);
+    if (idx < 0) return;
+    this.layers.splice(idx, 1);
+    if (this.activeLayerId === id) {
+      const neighbor = this.layers[Math.min(idx, this.layers.length - 1)];
+      this.activeLayerId = neighbor ? neighbor.id : null;
+    }
   }
 
   moveLayer(id: string, toIndex: number): void {

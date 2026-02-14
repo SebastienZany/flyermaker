@@ -4,11 +4,15 @@ export interface HistoryEntry<T> {
 }
 
 export class History<T> {
+  private static readonly MAX_UNDO = 100;
   private undoStack: HistoryEntry<T>[] = [];
   private redoStack: HistoryEntry<T>[] = [];
 
   push(entry: HistoryEntry<T>): void {
     this.undoStack.push(entry);
+    if (this.undoStack.length > History.MAX_UNDO) {
+      this.undoStack.shift();
+    }
     this.redoStack = [];
   }
 
