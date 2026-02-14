@@ -20,7 +20,7 @@ export class Compositor {
     const { content } = layer;
     switch (content.type) {
       case 'image':
-        ctx.drawImage(content.source, layer.x, layer.y, layer.width, layer.height);
+        ctx.drawImage(layer.renderSource ?? content.source, layer.x, layer.y, layer.width, layer.height);
         break;
     }
   }

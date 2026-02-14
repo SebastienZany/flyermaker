@@ -161,3 +161,16 @@ button, input, select { font: inherit; }
 .transform-grid { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
 .transform-grid label { display:flex; flex-direction:column; gap:4px; color: var(--text-dim); font-size:10px; }
 .transform-grid input { width:100%; }
+
+.effects-panel { max-height: 36vh; overflow-y: auto; }
+.effect-add { display: flex; gap: 6px; }
+.effects-list { display: flex; flex-direction: column; gap: 8px; }
+.effect-item { border: 1px solid var(--border); border-radius: 6px; padding: 6px; background: var(--bg-dark); }
+.effect-row { display: flex; align-items: center; gap: 6px; }
+.effect-row strong { flex: 1; font-size: 11px; }
+.effect-actions { display: flex; gap: 4px; }
+.effect-controls { display: grid; grid-template-columns: 1fr; gap: 4px; margin-top: 6px; }
+.effect-controls label { display: grid; grid-template-columns: 78px 1fr 40px; align-items: center; gap: 6px; color: var(--text-dim); font-size: 10px; }
+.effect-controls input[type='color'] { width: 100%; height: 22px; border: 1px solid var(--border); background: none; }
+.effect-check { display: flex !important; grid-template-columns: none !important; gap: 6px; }
+.effect-empty { color: var(--text-dim); font-size: 10px; }

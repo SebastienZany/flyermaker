@@ -1,3 +1,5 @@
+import type { LayerEffect } from '../effects/types';
+
 export type BlendMode = GlobalCompositeOperation;
 
 export interface ImageContent {
@@ -10,8 +12,6 @@ export interface ImageContent {
 
 export type LayerContent = ImageContent;
 
-export type LayerEffect = never; // placeholder for future effects
-
 export class Layer {
   readonly id: string;
   name: string;
@@ -21,6 +21,7 @@ export class Layer {
   blendMode: BlendMode = 'source-over';
   content: LayerContent;
   effects: LayerEffect[] = [];
+  renderSource: CanvasImageSource | null = null;
 
   x = 0;
   y = 0;

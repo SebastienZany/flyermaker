@@ -7,11 +7,21 @@ import { Renderer } from './renderer/Renderer';
 import { Viewport } from './renderer/Viewport';
 import { RulerRenderer } from './renderer/RulerRenderer';
 import { LayersPanel } from './ui/LayersPanel';
+import { EffectRenderer } from './effects/EffectRenderer';
+import { EFFECT_DEFINITIONS, getEffectDefinition } from './effects/EffectRegistry';
+import type { LayerEffect } from './effects/types';
 
 declare const __BUILD_TAG__: string;
 
 interface AppEvents { rerender: undefined; }
 type DragMode = 'move' | 'resize-nw' | 'resize-ne' | 'resize-sw' | 'resize-se';
+
+interface LayerEffectSnapshot {
+  id: string;
+  type: string;
+  enabled: boolean;
+  params: Record<string, number | string | boolean>;
+}
 
 interface LayerSnapshot {
   id: string;
@@ -25,6 +35,7 @@ interface LayerSnapshot {
   width: number;
   height: number;
   content: LayerContent;
+  effects: LayerEffectSnapshot[];
 }
 
 interface DocumentSnapshot {
@@ -48,6 +59,8 @@ export class App {
   private readonly viewport = new Viewport();
   private readonly renderer: Renderer;
   private readonly rulerRenderer = new RulerRenderer();
+  private readonly effectRenderer = new EffectRenderer();
+  private readonly effectCache = new Map<string, { key: string; image: CanvasImageSource }>();
   private readonly layersPanel: LayersPanel;
   private activeTool = 'Move';
   private autoSelect = true;
@@ -211,6 +224,35 @@ export class App {
 
     this.root.querySelector('#add-layer')?.addEventListener('click', () => {
       this.root.querySelector<HTMLInputElement>('#file-input')?.click();
+    });
+
+    this.root.querySelector('#add-effect')?.addEventListener('click', () => this.addSelectedEffect());
+
+    this.root.querySelector('#effects-list')?.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement;
+      const row = target.closest<HTMLElement>('[data-effect-id]');
+      const effectId = row?.dataset.effectId;
+      if (!effectId) return;
+      if (target.matches('[data-effect-action="toggle"]')) this.applyEffectChange(effectId, (effect) => { effect.enabled = !effect.enabled; });
+      if (target.matches('[data-effect-action="delete"]')) this.removeEffect(effectId);
+      if (target.matches('[data-effect-action="up"]')) this.moveEffect(effectId, -1);
+      if (target.matches('[data-effect-action="down"]')) this.moveEffect(effectId, 1);
+    });
+
+    this.root.querySelector('#effects-list')?.addEventListener('change', (event) => {
+      const target = event.target as HTMLInputElement;
+      const row = target.closest<HTMLElement>('[data-effect-id]');
+      const effectId = row?.dataset.effectId;
+      const key = target.dataset.paramKey;
+      if (!effectId || !key) return;
+      const nextValue: number | string | boolean = target.type === 'checkbox'
+        ? target.checked
+        : target.type === 'range' || target.type === 'number'
+          ? Number(target.value)
+          : target.value;
+      this.applyEffectChange(effectId, (effect) => {
+        effect.params[key] = nextValue;
+      });
     });
 
     this.root.querySelector('#undo-action')?.addEventListener('click', () => this.undo());
@@ -551,7 +593,8 @@ export class App {
         al.y !== bl.y ||
         al.width !== bl.width ||
         al.height !== bl.height ||
-        !this.contentEqual(al.content, bl.content)
+        !this.contentEqual(al.content, bl.content) ||
+        !this.effectsEqual(al.effects, bl.effects)
       ) return false;
     }
     return true;
@@ -564,6 +607,20 @@ export class App {
         && a.naturalHeight === b.naturalHeight && a.name === b.name;
     }
     return false;
+  }
+
+  private effectsEqual(a: LayerEffectSnapshot[], b: LayerEffectSnapshot[]): boolean {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      const ae = a[i];
+      const be = b[i];
+      if (ae.id !== be.id || ae.type !== be.type || ae.enabled !== be.enabled) return false;
+      const aKeys = Object.keys(ae.params);
+      const bKeys = Object.keys(be.params);
+      if (aKeys.length !== bKeys.length) return false;
+      for (const key of aKeys) if (ae.params[key] !== be.params[key]) return false;
+    }
+    return true;
   }
 
   private captureSnapshot(): DocumentSnapshot {
@@ -582,7 +639,13 @@ export class App {
         y: layer.y,
         width: layer.width,
         height: layer.height,
-        content: { ...layer.content }
+        content: { ...layer.content },
+        effects: layer.effects.map((effect) => ({
+          id: effect.id,
+          type: effect.type,
+          enabled: effect.enabled,
+          params: { ...effect.params }
+        }))
       }))
     };
   }
@@ -600,6 +663,12 @@ export class App {
       next.y = layer.y;
       next.width = layer.width;
       next.height = layer.height;
+      next.effects = layer.effects.map((effect) => ({
+        id: effect.id,
+        type: effect.type,
+        enabled: effect.enabled,
+        params: { ...effect.params }
+      }));
       return next;
     });
     this.doc.activeLayerId = snapshot.activeLayerId;
@@ -666,8 +735,115 @@ export class App {
     if (input) input.value = `${value}`;
   }
 
+
+  private addSelectedEffect(): void {
+    const layer = this.doc.activeLayer;
+    const select = this.root.querySelector<HTMLSelectElement>('#effect-type');
+    if (!layer || !select) return;
+    const definition = getEffectDefinition(select.value);
+    if (!definition) return;
+    this.applyDocumentChange(() => {
+      const params: Record<string, number | string | boolean> = {};
+      for (const param of definition.params) params[param.key] = param.defaultValue;
+      layer.effects.push({ id: crypto.randomUUID(), type: definition.type, enabled: true, params });
+    });
+  }
+
+  private applyEffectChange(effectId: string, update: (effect: LayerEffect) => void): void {
+    this.applyDocumentChange(() => {
+      const layer = this.doc.activeLayer;
+      if (!layer) return;
+      const effect = layer.effects.find((entry) => entry.id === effectId);
+      if (!effect) return;
+      update(effect);
+    });
+  }
+
+  private removeEffect(effectId: string): void {
+    this.applyDocumentChange(() => {
+      const layer = this.doc.activeLayer;
+      if (!layer) return;
+      layer.effects = layer.effects.filter((entry) => entry.id !== effectId);
+    });
+  }
+
+  private moveEffect(effectId: string, offset: number): void {
+    this.applyDocumentChange(() => {
+      const layer = this.doc.activeLayer;
+      if (!layer) return;
+      const index = layer.effects.findIndex((entry) => entry.id === effectId);
+      const nextIndex = index + offset;
+      if (index < 0 || nextIndex < 0 || nextIndex >= layer.effects.length) return;
+      const [effect] = layer.effects.splice(index, 1);
+      layer.effects.splice(nextIndex, 0, effect);
+    });
+  }
+
+  private syncEffectsPanel(): void {
+    const list = this.root.querySelector<HTMLElement>('#effects-list');
+    const select = this.root.querySelector<HTMLSelectElement>('#effect-type');
+    const addButton = this.root.querySelector<HTMLButtonElement>('#add-effect');
+    if (!list || !select || !addButton) return;
+
+    select.innerHTML = EFFECT_DEFINITIONS.map((effect) => `<option value="${effect.type}">${effect.label}</option>`).join('');
+    const layer = this.doc.activeLayer;
+    addButton.disabled = !layer;
+
+    if (!layer) {
+      list.innerHTML = '<div class="effect-empty">Select a layer to edit effects.</div>';
+      return;
+    }
+
+    if (!layer.effects.length) {
+      list.innerHTML = '<div class="effect-empty">No effects on this layer.</div>';
+      return;
+    }
+
+    list.innerHTML = layer.effects.map((effect, index) => {
+      const definition = getEffectDefinition(effect.type);
+      if (!definition) return '';
+      const controls = definition.params.map((param) => {
+        const value = effect.params[param.key];
+        if (param.type === 'color') {
+          return `<label>${param.label}<input data-param-key="${param.key}" type="color" value="${String(value)}"></label>`;
+        }
+        if (param.type === 'checkbox') {
+          return `<label class="effect-check"><input data-param-key="${param.key}" type="checkbox" ${value ? 'checked' : ''}>${param.label}</label>`;
+        }
+        return `<label>${param.label}<input data-param-key="${param.key}" type="range" min="${param.min}" max="${param.max}" step="${param.step}" value="${Number(value)}"><span>${Number(value).toFixed(2)}</span></label>`;
+      }).join('');
+      return `<div class="effect-item" data-effect-id="${effect.id}"><div class="effect-row"><button data-effect-action="toggle" class="opt-btn">${effect.enabled ? 'On' : 'Off'}</button><strong>${definition.label}</strong><div class="effect-actions"><button data-effect-action="up" class="opt-btn" ${index === 0 ? 'disabled' : ''}>↑</button><button data-effect-action="down" class="opt-btn" ${index === layer.effects.length - 1 ? 'disabled' : ''}>↓</button><button data-effect-action="delete" class="opt-btn">✕</button></div></div><div class="effect-controls">${controls}</div></div>`;
+    }).join('');
+  }
+
   private syncLayerControls(): void {
     this.syncTransformPanel();
+    this.syncEffectsPanel();
+  }
+
+
+  private effectKey(layer: Layer): string {
+    return JSON.stringify(layer.effects.map((effect) => ({ type: effect.type, enabled: effect.enabled, params: effect.params })));
+  }
+
+  private updateLayerEffectRenders(): void {
+    const activeIds = new Set(this.doc.layers.map((layer) => layer.id));
+    for (const key of this.effectCache.keys()) if (!activeIds.has(key)) this.effectCache.delete(key);
+    for (const layer of this.doc.layers) {
+      if (!layer.effects.length) {
+        layer.renderSource = null;
+        continue;
+      }
+      const key = this.effectKey(layer);
+      const cached = this.effectCache.get(layer.id);
+      if (cached && cached.key === key) {
+        layer.renderSource = cached.image;
+        continue;
+      }
+      const processed = this.effectRenderer.process(layer.content.source as TexImageSource, layer.effects, layer.content.naturalWidth, layer.content.naturalHeight);
+      layer.renderSource = processed;
+      this.effectCache.set(layer.id, { key, image: processed });
+    }
   }
 
   private updateViewportLayout(): void {
@@ -693,6 +869,7 @@ export class App {
 
   private refreshUI(): void {
     this.layersPanel.render(this.doc.layers, this.doc.activeLayerId);
+    this.updateLayerEffectRenders();
     this.updateViewportLayout();
     this.renderer.render(this.doc, this.activeTool);
 
@@ -738,7 +915,7 @@ export class App {
       <div class="main">
         <div class="toolbar"><button class="tool-btn active" data-tool="Move" data-info="Move tool: drag a selected layer to reposition it. Drag corner handles to resize.">Move</button><button class="tool-btn" data-tool="Select" data-info="Select tool: keeps layer focus without moving; useful when adjusting panel values.">Select</button><button class="tool-btn" data-tool="Hand" data-info="Hand tool: click-drag in the canvas to pan the whole document view.">Hand</button><button class="tool-btn" data-tool="Zoom" data-info="Zoom tool: use wheel or +/- controls to zoom the entire document and rulers in 5% increments.">Zoom</button></div>
         <div class="canvas-wrapper"><canvas id="ruler-h" class="ruler-h" height="20"></canvas><div class="canvas-with-ruler"><canvas id="ruler-v" class="ruler-v" width="20"></canvas><div class="canvas-area"><div id="canvas-wrap" class="canvas-wrap"><canvas id="main-canvas" width="800" height="600"></canvas></div><div class="zoom-controls"><button class="zoom-btn" id="zoom-out" data-info="Zoom out by 5%.">−</button><div class="zoom-level" id="zoom-level">100%</div><button class="zoom-btn" id="zoom-in" data-info="Zoom in by 5%.">+</button><button class="zoom-btn" id="zoom-fit" data-info="Fit: scales the entire document to fit inside the current canvas viewport.">Fit</button></div></div></div></div>
-        <div class="panels-right"><div class="panel"><div class="panel-header panel-header-actions"><span class="panel-title">Layers</span><button id="add-layer" class="opt-btn panel-add-btn" data-info="Import an image as a new layer.">+ Image</button></div><div class="panel-body"><div id="layers-list" class="layers-list"></div></div></div><div class="panel"><div class="panel-header"><span class="panel-title">Transform</span></div><div class="panel-body transform-grid"><label>X <input id="transform-x" class="opt-select" type="number"></label><label>Y <input id="transform-y" class="opt-select" type="number"></label><label>W <input id="transform-w" class="opt-select" type="number"></label><label>H <input id="transform-h" class="opt-select" type="number"></label></div></div></div>
+        <div class="panels-right"><div class="panel"><div class="panel-header panel-header-actions"><span class="panel-title">Layers</span><button id="add-layer" class="opt-btn panel-add-btn" data-info="Import an image as a new layer.">+ Image</button></div><div class="panel-body"><div id="layers-list" class="layers-list"></div></div></div><div class="panel"><div class="panel-header"><span class="panel-title">Transform</span></div><div class="panel-body transform-grid"><label>X <input id="transform-x" class="opt-select" type="number"></label><label>Y <input id="transform-y" class="opt-select" type="number"></label><label>W <input id="transform-w" class="opt-select" type="number"></label><label>H <input id="transform-h" class="opt-select" type="number"></label></div></div><div class="panel"><div class="panel-header panel-header-actions"><span class="panel-title">Effects</span><div class="effect-add"><select id="effect-type" class="opt-select"></select><button id="add-effect" class="opt-btn panel-add-btn">Add</button></div></div><div class="panel-body effects-panel"><div id="effects-list" class="effects-list"></div></div></div></div>
       </div>
       <div class="statusbar"><div class="status-item status-help-only" id="status-help">Move tool: drag selected layers to reposition. Drag corner handles to resize.</div></div>
       <input id="file-input" type="file" accept="image/*" hidden />
