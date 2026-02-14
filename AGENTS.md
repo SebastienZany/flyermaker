@@ -1,7 +1,7 @@
 # FlyerMaker — Status Tracker
 
 ## Current Phase
-**Phase 6: Move + Transform** — COMPLETE
+**Phase 7: Undo/Redo** — COMPLETE
 
 ## Phase Status
 
@@ -13,7 +13,7 @@
 | 4 | Layer System | COMPLETE | Layers panel add/delete/reorder/select |
 | 5 | Image Import | COMPLETE | File dialog, URL import, drag-and-drop import |
 | 6 | Move + Transform | COMPLETE | Move tool dragging, corner resize handles, Transform panel (X/Y/W/H) |
-| 7 | Undo/Redo | NOT STARTED | |
+| 7 | Undo/Redo | COMPLETE | Command history for layer/document edits + keyboard/menu shortcuts |
 | 8 | WebGL Effects Pipeline | NOT STARTED | |
 | 9 | Effects Panel UI | NOT STARTED | |
 | 10 | First Effects Batch | NOT STARTED | |
@@ -57,3 +57,12 @@
 
 
 - Restored a visible build tag in the menubar chrome and fixed zoom-center math edge cases for wheel zoom near viewport edges.
+
+- Implemented undo/redo history for layer/document edits with Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z shortcuts, plus Edit menu and options-bar controls.
+
+
+## Browser QA Notes
+
+- Local `npm run test:e2e` currently defaults to Chromium and may fail in restricted environments if Playwright browser binaries cannot be downloaded.
+- Verified Phase 7 undo/redo flow in **Firefox** using the browser container Playwright runner (`p.firefox.launch()`), exercising add layer + transform edit + undo/redo keyboard shortcuts.
+- Recommended fallback when Chromium install is blocked: run browser-container Playwright scripts against Firefox for functional validation and attach a screenshot artifact.

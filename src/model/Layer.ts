@@ -21,7 +21,7 @@ export class Layer {
   width = 0;
   height = 0;
 
-  constructor(name: string, id = crypto.randomUUID()) {
+  constructor(name: string, id: string = crypto.randomUUID()) {
     this.id = id;
     this.name = name;
   }
