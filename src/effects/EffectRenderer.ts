@@ -42,6 +42,9 @@ export class EffectRenderer {
   private vertexBuffer: WebGLBuffer | null = null;
   private texCoordBuffer: WebGLBuffer | null = null;
   private sourceTexture: WebGLTexture | null = null;
+  private effectOriginalTexture: WebGLTexture | null = null;
+  private effectOriginalFb: WebGLFramebuffer | null = null;
+  private effectOriginalSize: { width: number; height: number } = { width: 0, height: 0 };
   private resultCanvas: HTMLCanvasElement | null = null;
   private cacheMap = new Map<string, HTMLCanvasElement>();
 
@@ -95,6 +98,38 @@ export class EffectRenderer {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     this.pingPong = { framebuffers: fbs, textures: texs, width, height };
     return this.pingPong;
+  }
+
+  private snapshotEffectInput(gl: WebGL2RenderingContext, inputTex: WebGLTexture, width: number, height: number): WebGLTexture {
+    if (
+      !this.effectOriginalTexture ||
+      this.effectOriginalSize.width !== width ||
+      this.effectOriginalSize.height !== height
+    ) {
+      if (this.effectOriginalTexture) gl.deleteTexture(this.effectOriginalTexture);
+      if (this.effectOriginalFb) gl.deleteFramebuffer(this.effectOriginalFb);
+
+      this.effectOriginalTexture = gl.createTexture()!;
+      gl.bindTexture(gl.TEXTURE_2D, this.effectOriginalTexture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+      this.effectOriginalFb = gl.createFramebuffer()!;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.effectOriginalFb);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.effectOriginalTexture, 0);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+      this.effectOriginalSize = { width, height };
+    }
+
+    // Copy inputTex into the snapshot texture via a blit
+    const passThroughProg = this.getProgram(gl, PASSTHROUGH_FRAGMENT);
+    this.drawPass(gl, passThroughProg, inputTex, this.effectOriginalFb!, {}, width, height);
+
+    return this.effectOriginalTexture;
   }
 
   private compileShader(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader {
@@ -228,7 +263,13 @@ export class EffectRenderer {
       if (!def) continue;
 
       const passCount = def.passes ?? 1;
-      const effectInputTex = inputTexture;
+
+      // For multi-pass effects, snapshot the current input into a
+      // separate texture so it survives ping-pong overwrites.
+      let effectOriginalTex: WebGLTexture | undefined;
+      if (passCount > 1) {
+        effectOriginalTex = this.snapshotEffectInput(gl, inputTexture, width, height);
+      }
 
       for (let pass = 0; pass < passCount; pass++) {
         let fragmentSource: string;
@@ -249,7 +290,7 @@ export class EffectRenderer {
 
         const prog = this.getProgram(gl, fragmentSource);
         const writeIndex = readIndex === 0 ? 1 : 0;
-        this.drawPass(gl, prog, inputTexture, pp.framebuffers[writeIndex], uniforms, width, height, bindOriginal ? effectInputTex : undefined);
+        this.drawPass(gl, prog, inputTexture, pp.framebuffers[writeIndex], uniforms, width, height, bindOriginal ? effectOriginalTex : undefined);
         inputTexture = pp.textures[writeIndex];
         readIndex = writeIndex;
       }
