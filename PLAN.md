@@ -205,12 +205,12 @@ src/
 - **Color Grading** — brightness, contrast, saturation (luma-preserving), hue shift (HSV), lift/gamma/gain color correction. Single-pass shader
 - **Verified:** each effect works independently and stacked (e.g. Bloom → Color Grading → Blur)
 
-### Phase 11: Advanced Effects
-- **Halation** — like bloom but with warm color shift, affects specific luminance ranges
-- **Iridescence** — thin-film interference based on view angle / surface normal approximation
-- **Chromatic Aberration** — per-channel offset (radial or linear)
-- **Grain/Noise** — animated film grain, intensity + size params
-- **Verify:** effects stack and interact correctly
+### Phase 11: Advanced Effects — COMPLETE
+- **Halation** — implemented as 4-pass effect (threshold extract → H blur → V blur → warm composite onto original)
+- **Iridescence** — implemented reactive hue remap with edge/luma gating, ambient hue mixing, deterministic dither, and seeded controls
+- **Chromatic Aberration** — implemented per-channel RGB offsets with selectable radial/linear mode, direction angle, and mix amount
+- **Grain/Noise** — implemented seeded noise with four modes (fine mono, color speckle, soft chroma, coarse film), amount, and size controls
+- **Verified:** advanced effects render in stack via existing WebGL pipeline and are available in Effects panel
 
 ### Phase 12: Text + Export + Polish
 - `TextTool`, text layers with font/size/color/alignment
