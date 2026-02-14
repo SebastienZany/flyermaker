@@ -1,5 +1,8 @@
 # FlyerMaker — Status Tracker
 
+## Workflow Requirement
+- ALWAYS consult `PLAN.md` before making changes and keep `PLAN.md` up to date with the current plan/status.
+
 ## Current Phase
 **Phase 7: Undo/Redo** — COMPLETE
 
