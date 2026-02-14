@@ -50,6 +50,7 @@
 - **Bloom compositing:** Original image was lost through blur passes. Fixed with `bindOriginal`/`u_original` sampler pattern.
 - **Vignette smoothstep edge order:** `smoothstep` arguments were in wrong order, producing inverted falloff. Fixed.
 - **Effect cache growth:** Cache was unbounded. Fixed with per-layer eviction (one cached canvas per layer).
+- **Slider destruction during param updates (P1):** Every slider `oninput` event triggered a full `refreshUI` which rebuilt the effects panel DOM, destroying the active slider mid-drag. Fixed by skipping effects panel rebuild during param updates (`skipEffectsPanelRender` flag) and debouncing history commits (one undo entry per drag session, not per tick).
 
 ## Completed Milestones
 

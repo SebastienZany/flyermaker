@@ -290,6 +290,7 @@ The `EventBus` emits a single `rerender` event that triggers a full `refreshUI()
 - **Pro:** Impossible to have stale UI — every state change refreshes everything
 - **Con:** Redundant work on targeted changes (e.g. toggling visibility redraws rulers)
 - **Acceptable because:** Canvas 2D compositing for <50 layers is sub-millisecond, DOM updates are lightweight with current panel complexity
+- **Exception:** Effect param updates skip the effects panel rebuild (`skipEffectsPanelRender` flag) to avoid destroying the slider/input being dragged. History commits are debounced (300ms) so continuous slider drags produce one undo entry.
 
 If performance becomes an issue, the fix is targeted: add fine-grained events (`layer-changed`, `viewport-changed`) and have each UI component subscribe only to what it needs. The EventBus already supports this — it's a design knob, not a rewrite.
 

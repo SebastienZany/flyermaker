@@ -69,6 +69,9 @@ export class App {
   private panning = false;
   private panStartClientX = 0;
   private panStartClientY = 0;
+  private effectParamBefore: DocumentSnapshot | null = null;
+  private paramCommitTimer: number | null = null;
+  private skipEffectsPanelRender = false;
 
   constructor(private readonly root: HTMLElement) {
     this.doc.width = 800;
@@ -142,12 +145,29 @@ export class App {
         });
       },
       onUpdateParam: (index, paramKey, value) => {
-        this.applyDocumentChange(() => {
-          const layer = this.doc.activeLayer;
-          if (!layer) return;
-          const param = layer.effects[index].params[paramKey];
-          if (param) (param as EffectParam).value = value as never;
-        });
+        if (!this.effectParamBefore) {
+          this.effectParamBefore = this.captureSnapshot();
+        }
+        const layer = this.doc.activeLayer;
+        if (!layer) return;
+        const param = layer.effects[index].params[paramKey];
+        if (param) (param as EffectParam).value = value as never;
+
+        // Redraw canvas without rebuilding effects panel DOM
+        // (rebuilding would destroy the slider/input being dragged)
+        this.skipEffectsPanelRender = true;
+        this.events.emit('rerender', undefined);
+        this.skipEffectsPanelRender = false;
+
+        // Debounce history commit — one undo entry per drag, not per tick
+        if (this.paramCommitTimer !== null) {
+          window.clearTimeout(this.paramCommitTimer);
+        }
+        this.paramCommitTimer = window.setTimeout(() => {
+          this.commitHistoryEntry(this.effectParamBefore);
+          this.effectParamBefore = null;
+          this.paramCommitTimer = null;
+        }, 300);
       },
       onMoveEffect: (fromIndex, toIndex) => {
         this.applyDocumentChange(() => {
@@ -761,8 +781,10 @@ export class App {
 
   private refreshUI(): void {
     this.layersPanel.render(this.doc.layers, this.doc.activeLayerId);
-    const activeLayer = this.doc.activeLayer;
-    this.effectsPanel.render(activeLayer?.effects ?? [], !!activeLayer);
+    if (!this.skipEffectsPanelRender) {
+      const activeLayer = this.doc.activeLayer;
+      this.effectsPanel.render(activeLayer?.effects ?? [], !!activeLayer);
+    }
     this.updateViewportLayout();
     this.renderer.render(this.doc, this.activeTool);
 
