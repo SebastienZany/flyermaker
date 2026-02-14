@@ -257,7 +257,13 @@ export class EffectRenderer {
     resultCtx.clearRect(0, 0, width, height);
     resultCtx.drawImage(this.offscreenCanvas! as unknown as CanvasImageSource, 0, 0);
 
-    // Cache it
+    // Cache it — evict stale entries for the same layer first
+    const layerId = cacheKey.split('|')[0];
+    for (const key of this.cacheMap.keys()) {
+      if (key.startsWith(layerId + '|') && key !== cacheKey) {
+        this.cacheMap.delete(key);
+      }
+    }
     const cacheCanvas = document.createElement('canvas');
     cacheCanvas.width = width;
     cacheCanvas.height = height;

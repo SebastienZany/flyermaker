@@ -14,7 +14,7 @@ void main() {
   vec4 color = texture(u_texture, v_texCoord);
   vec2 uv = v_texCoord - u_center;
   float dist = length(uv);
-  float vignette = smoothstep(u_radius, u_radius - u_softness, dist);
+  float vignette = 1.0 - smoothstep(u_radius - u_softness, u_radius, dist);
   color.rgb = mix(u_color, color.rgb, vignette);
   fragColor = color;
 }
