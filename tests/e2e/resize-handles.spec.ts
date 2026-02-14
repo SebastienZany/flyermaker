@@ -3,7 +3,8 @@ import { expect, test } from '@playwright/test';
 test('active layer can be resized by dragging corner handles', async ({ page }) => {
   await page.goto('/');
 
-  await page.click('#add-layer');
+  await page.click('#add-layer-btn');
+  await page.click('.add-layer-action[data-add-layer="image"]');
 
   const canvas = page.locator('#main-canvas');
   const box = await canvas.boundingBox();
