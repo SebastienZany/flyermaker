@@ -109,6 +109,25 @@ export class App {
   }
 
   private bindControls(canvas: HTMLCanvasElement): void {
+    const menubar = this.root.querySelector<HTMLElement>('.menubar');
+    const menuGroups = this.root.querySelectorAll<HTMLElement>('.menu-group');
+
+    menuGroups.forEach((group) => {
+      group.addEventListener('mouseenter', () => {
+        if (!this.activeMenu) return;
+        const menu = group.dataset.menu;
+        if (!menu || menu === this.activeMenu) return;
+        this.activeMenu = menu;
+        this.syncMenuState();
+      });
+    });
+
+    menubar?.addEventListener('mouseleave', () => {
+      if (!this.activeMenu) return;
+      this.activeMenu = null;
+      this.syncMenuState();
+    });
+
     this.root.querySelectorAll<HTMLElement>('.menu-item').forEach((item) => {
       item.addEventListener('click', (event) => {
         event.stopPropagation();
