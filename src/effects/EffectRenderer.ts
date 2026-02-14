@@ -228,6 +228,7 @@ export class EffectRenderer {
       if (!def) continue;
 
       const passCount = def.passes ?? 1;
+      const effectInputTex = inputTexture;
 
       for (let pass = 0; pass < passCount; pass++) {
         let fragmentSource: string;
@@ -248,7 +249,7 @@ export class EffectRenderer {
 
         const prog = this.getProgram(gl, fragmentSource);
         const writeIndex = readIndex === 0 ? 1 : 0;
-        this.drawPass(gl, prog, inputTexture, pp.framebuffers[writeIndex], uniforms, width, height, bindOriginal ? srcTex : undefined);
+        this.drawPass(gl, prog, inputTexture, pp.framebuffers[writeIndex], uniforms, width, height, bindOriginal ? effectInputTex : undefined);
         inputTexture = pp.textures[writeIndex];
         readIndex = writeIndex;
       }
