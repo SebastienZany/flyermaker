@@ -85,9 +85,8 @@ export class App {
     if (!layersRoot) throw new Error('Layers panel missing');
     this.layersPanel = new LayersPanel(layersRoot, {
       onSelectLayer: (id) => {
-        this.applyDocumentChange(() => {
-          this.doc.activeLayerId = id;
-        });
+        this.doc.activeLayerId = id;
+        this.events.emit('rerender', undefined);
       },
       onDeleteLayer: (id) => {
         this.applyDocumentChange(() => {
@@ -140,6 +139,7 @@ export class App {
       const key = event.key.toLowerCase();
       const meta = event.ctrlKey || event.metaKey;
       if (meta && key === 'z') {
+        if (this.isEditableTarget(event.target)) return;
         event.preventDefault();
         if (event.shiftKey) this.redo();
         else this.undo();
@@ -361,6 +361,13 @@ export class App {
       x: ((event.clientX - rect.left) / rect.width) * canvas.width,
       y: ((event.clientY - rect.top) / rect.height) * canvas.height
     };
+  }
+
+  private isEditableTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    if (target.isContentEditable) return true;
+    const tag = target.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
   }
 
   private syncMenuState(): void {
