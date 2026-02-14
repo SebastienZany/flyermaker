@@ -57,6 +57,7 @@
 - **Transform input NaN propagation:** Typing non-numeric text in transform panel X/Y/W/H inputs would propagate `NaN` to layer properties, breaking rendering. Fixed with `Number.isFinite` guard that falls back to current layer value.
 - **Delete-layer selects wrong neighbor:** Deleting a middle layer always jumped selection to the last layer instead of the adjacent one. Fixed to select the next layer at the same index (or previous if deleting the last).
 - **Blend mode innerHTML injection surface:** Blend mode `<select>` was built via `innerHTML` with string interpolation. Replaced with safe `document.createElement('option')` + `textContent` pattern.
+- **Drag continuity outside canvas/gutter:** Move/resize interactions previously stopped when the pointer left the image/canvas area. Fixed by tracking active drag motion from a window-level mousemove path so transforms continue smoothly in surrounding gutter space.
 
 ## Completed Milestones
 
