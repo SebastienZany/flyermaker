@@ -4,7 +4,7 @@
 - ALWAYS consult `PLAN.md` before making changes and keep `PLAN.md` up to date with the current plan/status.
 
 ## Current Phase
-**Phase 10: First Effects Batch** — COMPLETE
+**Phase 11: Advanced Effects** — COMPLETE
 
 ## Phase Status
 
@@ -20,7 +20,7 @@
 | 8 | WebGL Effects Pipeline | COMPLETE | EffectRenderer (WebGL 2, ping-pong FBOs, shader cache), Effect/EffectParam type system, EffectRegistry, per-layer effect stack integrated into Compositor |
 | 9 | Effects Panel UI | COMPLETE | EffectsPanel with auto-generated param controls (sliders, color pickers, checkboxes, selects), add/remove/reorder/toggle, full undo/redo via snapshot history |
 | 10 | First Effects Batch | COMPLETE | Gaussian Blur (separable 2-pass), Bloom (4-pass: extract+H-blur+V-blur+composite with bindOriginal), Vignette (radial darkening), Color Grading (brightness/contrast/saturation/hue/lift/gamma/gain) |
-| 11 | Advanced Effects | NOT STARTED | |
+| 11 | Advanced Effects | COMPLETE | Halation, Iridescence, Chromatic Aberration, Grain/Noise |
 | 12 | Text + Export + Polish | NOT STARTED | |
 
 ## Files Created
@@ -33,7 +33,7 @@
 - `src/renderer/Renderer.ts`, `src/renderer/Compositor.ts`, `src/renderer/Viewport.ts`, `src/renderer/RulerRenderer.ts`
 - `src/ui/LayersPanel.ts`, `src/ui/EffectsPanel.ts`
 - `src/effects/Effect.ts`, `src/effects/EffectRegistry.ts`, `src/effects/EffectRenderer.ts`, `src/effects/EffectStack.ts`, `src/effects/registerEffects.ts`
-- `src/effects/blur.ts`, `src/effects/bloom.ts`, `src/effects/vignette.ts`, `src/effects/colorGrading.ts`
+- `src/effects/blur.ts`, `src/effects/bloom.ts`, `src/effects/vignette.ts`, `src/effects/colorGrading.ts`, `src/effects/halation.ts`, `src/effects/iridescence.ts`, `src/effects/chromaticAberration.ts`, `src/effects/grain.ts`
 
 ## Open Issues
 
@@ -86,6 +86,7 @@
 - Implemented WebGL 2 effects pipeline (Phase 8): EffectRenderer with shader compilation, ping-pong framebuffers, source texture upload with UNPACK_FLIP_Y_WEBGL, per-layer effect caching with bounded eviction, and PassConfig with bindOriginal support for multi-texture composite passes.
 - Built EffectsPanel UI (Phase 9): auto-generated parameter controls from EffectParam definitions, add/remove/reorder/toggle effects, live preview on parameter change, full undo/redo via snapshot-based history with effect cloning.
 - Shipped first effects batch (Phase 10): Gaussian Blur (separable 2-pass H+V), Bloom (4-pass: bright extraction → H-blur → V-blur → composite onto original via u_original sampler), Vignette (radial darkening with center/radius/softness/color), Color Grading (brightness/contrast/saturation/hue shift/lift/gamma/gain).
+- Completed advanced effects (Phase 11): Halation (warm glow, thresholded multi-pass blur), Iridescence (reactive hue remap with edge/luma gating + seeded dither), Chromatic Aberration (radial/linear RGB channel split), Grain/Noise (seeded fine mono/color speckle/soft chroma/coarse film).
 
 ## Browser QA Notes
 
