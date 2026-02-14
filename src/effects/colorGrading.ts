@@ -63,7 +63,7 @@ export const colorGrading: EffectDefinition = {
     contrast: { type: 'float', label: 'Contrast', value: 1.0, min: 0.0, max: 2.0, step: 0.01 },
     saturation: { type: 'float', label: 'Saturation', value: 1.0, min: 0.0, max: 2.0, step: 0.01 },
     hue: { type: 'float', label: 'Hue Shift', value: 0, min: -180, max: 180, step: 1 },
-    lift: { type: 'color', label: 'Lift', value: [1, 1, 1] },
+    lift: { type: 'color', label: 'Lift', value: [0, 0, 0] },
     gamma: { type: 'color', label: 'Gamma', value: [1, 1, 1] },
     gain: { type: 'color', label: 'Gain', value: [1, 1, 1] }
   },

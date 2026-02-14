@@ -155,8 +155,13 @@ export class EffectsPanel {
         };
 
         numInput.onchange = () => {
-          const v = param.type === 'int' ? parseInt(numInput.value, 10) : parseFloat(numInput.value);
-          const clamped = Math.min(param.max, Math.max(param.min, v));
+          const raw = param.type === 'int' ? parseInt(numInput.value, 10) : parseFloat(numInput.value);
+          if (Number.isNaN(raw)) {
+            numInput.value = `${param.value}`;
+            slider.value = `${param.value}`;
+            return;
+          }
+          const clamped = Math.min(param.max, Math.max(param.min, raw));
           slider.value = `${clamped}`;
           numInput.value = `${clamped}`;
           this.callbacks.onUpdateParam(effectIndex, key, clamped);

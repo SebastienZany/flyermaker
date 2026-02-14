@@ -286,6 +286,15 @@ export class EffectRenderer {
     return cacheCanvas;
   }
 
+  pruneDeletedLayers(activeLayerIds: Set<string>): void {
+    for (const key of this.cacheMap.keys()) {
+      const id = key.split('|')[0];
+      if (!activeLayerIds.has(id)) {
+        this.cacheMap.delete(key);
+      }
+    }
+  }
+
   invalidateCache(layerId?: string): void {
     if (layerId) {
       for (const key of this.cacheMap.keys()) {

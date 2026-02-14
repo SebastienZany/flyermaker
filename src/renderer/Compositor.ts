@@ -9,6 +9,9 @@ export class Compositor {
   draw(ctx: CanvasRenderingContext2D, doc: DocumentModel): void {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
+    const activeIds = new Set(doc.layers.map((l) => l.id));
+    this.effectRenderer.pruneDeletedLayers(activeIds);
+
     for (const layer of doc.layers) {
       if (!layer.visible) continue;
       ctx.globalAlpha = layer.opacity;
