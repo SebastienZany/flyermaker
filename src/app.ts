@@ -276,8 +276,25 @@ export class App {
       input.addEventListener('change', () => this.applyDocumentSize());
     });
 
-    this.root.querySelector('#add-layer')?.addEventListener('click', () => {
-      this.root.querySelector<HTMLInputElement>('#file-input')?.click();
+    const addLayerBtn = this.root.querySelector('#add-layer-btn');
+    const addLayerGroup = this.root.querySelector('.add-layer-group');
+    addLayerBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      addLayerGroup?.classList.toggle('open');
+    });
+    this.root.querySelectorAll<HTMLElement>('.add-layer-action').forEach((item) => {
+      item.addEventListener('click', () => {
+        addLayerGroup?.classList.remove('open');
+        const type = item.dataset.addLayer;
+        if (type === 'image') {
+          this.root.querySelector<HTMLInputElement>('#file-input')?.click();
+        }
+      });
+    });
+    this.root.addEventListener('click', (event) => {
+      if (!(event.target as HTMLElement).closest('.add-layer-group')) {
+        addLayerGroup?.classList.remove('open');
+      }
     });
 
     this.root.querySelector('#undo-action')?.addEventListener('click', () => this.undo());
@@ -852,7 +869,7 @@ export class App {
       <div class="main">
         <div class="toolbar"><button class="tool-btn active" data-tool="Move" data-info="Move tool: drag a selected layer to reposition it. Drag corner handles to resize.">Move</button><button class="tool-btn" data-tool="Select" data-info="Select tool: keeps layer focus without moving; useful when adjusting panel values.">Select</button><button class="tool-btn" data-tool="Hand" data-info="Hand tool: click-drag in the canvas to pan the whole document view.">Hand</button><button class="tool-btn" data-tool="Zoom" data-info="Zoom tool: use wheel or +/- controls to zoom the entire document and rulers in 5% increments.">Zoom</button></div>
         <div class="canvas-wrapper"><canvas id="ruler-h" class="ruler-h" height="20"></canvas><div class="canvas-with-ruler"><canvas id="ruler-v" class="ruler-v" width="20"></canvas><div class="canvas-area"><div id="canvas-wrap" class="canvas-wrap"><canvas id="main-canvas" width="800" height="600"></canvas></div><div class="zoom-controls"><button class="zoom-btn" id="zoom-out" data-info="Zoom out by 5%.">−</button><div class="zoom-level" id="zoom-level">100%</div><button class="zoom-btn" id="zoom-in" data-info="Zoom in by 5%.">+</button><button class="zoom-btn" id="zoom-fit" data-info="Fit: scales the entire document to fit inside the current canvas viewport.">Fit</button></div></div></div></div>
-        <div class="panels-right"><div class="panel"><div class="panel-header panel-header-actions"><span class="panel-title">Layers</span><button id="add-layer" class="opt-btn panel-add-btn" data-info="Import an image as a new layer.">+ Image</button></div><div class="panel-body"><div id="layers-list" class="layers-list"></div></div></div><div class="panel"><div class="panel-header"><span class="panel-title">Transform</span></div><div class="panel-body transform-grid"><label>X <input id="transform-x" class="opt-select" type="number"></label><label>Y <input id="transform-y" class="opt-select" type="number"></label><label>W <input id="transform-w" class="opt-select" type="number"></label><label>H <input id="transform-h" class="opt-select" type="number"></label></div></div><div class="panel panel-effects"><div class="panel-header"><span class="panel-title">Effects</span></div><div class="panel-body"><div id="effects-list" class="effects-list"></div></div></div></div>
+        <div class="panels-right"><div class="panel"><div class="panel-header panel-header-actions"><span class="panel-title">Layers</span><div class="add-layer-group"><button id="add-layer-btn" class="opt-btn panel-add-btn" data-info="Add a new layer to the document.">+ Layer</button><div class="add-layer-dropdown"><button class="add-layer-action" data-add-layer="image">Image…</button></div></div></div><div class="panel-body"><div id="layers-list" class="layers-list"></div></div></div><div class="panel"><div class="panel-header"><span class="panel-title">Transform</span></div><div class="panel-body transform-grid"><label>X <input id="transform-x" class="opt-select" type="number"></label><label>Y <input id="transform-y" class="opt-select" type="number"></label><label>W <input id="transform-w" class="opt-select" type="number"></label><label>H <input id="transform-h" class="opt-select" type="number"></label></div></div><div class="panel panel-effects"><div class="panel-header"><span class="panel-title">Effects</span></div><div class="panel-body"><div id="effects-list" class="effects-list"></div></div></div></div>
       </div>
       <div class="statusbar"><div class="status-item status-help-only" id="status-help">Move tool: drag selected layers to reposition. Drag corner handles to resize.</div></div>
       <input id="file-input" type="file" accept="image/*" hidden />
