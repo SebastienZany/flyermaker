@@ -157,7 +157,7 @@ export class EffectRenderer {
     return this.sourceTexture;
   }
 
-  private drawPass(gl: WebGL2RenderingContext, prog: ShaderProgram, inputTex: WebGLTexture, outputFb: WebGLFramebuffer | null, uniforms: UniformMap, width: number, height: number): void {
+  private drawPass(gl: WebGL2RenderingContext, prog: ShaderProgram, inputTex: WebGLTexture, outputFb: WebGLFramebuffer | null, uniforms: UniformMap, width: number, height: number, originalTex?: WebGLTexture): void {
     gl.bindFramebuffer(gl.FRAMEBUFFER, outputFb);
     gl.viewport(0, 0, width, height);
 
@@ -167,6 +167,14 @@ export class EffectRenderer {
     gl.bindTexture(gl.TEXTURE_2D, inputTex);
     if (prog.uniforms.texture !== null) {
       gl.uniform1i(prog.uniforms.texture, 0);
+    }
+
+    if (originalTex) {
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, originalTex);
+      const origLoc = gl.getUniformLocation(prog.program, 'u_original');
+      if (origLoc !== null) gl.uniform1i(origLoc, 1);
+      gl.activeTexture(gl.TEXTURE0);
     }
 
     for (const [name, value] of Object.entries(uniforms)) {
@@ -222,11 +230,13 @@ export class EffectRenderer {
       for (let pass = 0; pass < passCount; pass++) {
         let fragmentSource: string;
         let uniforms: UniformMap;
+        let bindOriginal = false;
 
         if (def.getPassConfig && passCount > 1) {
           const config = def.getPassConfig(pass, effect.params);
           fragmentSource = config.fragmentShader;
           uniforms = config.uniforms;
+          bindOriginal = config.bindOriginal === true;
         } else {
           fragmentSource = def.getFragmentShader();
           uniforms = def.getUniforms(effect.params);
@@ -236,7 +246,7 @@ export class EffectRenderer {
 
         const prog = this.getProgram(gl, fragmentSource);
         const writeIndex = readIndex === 0 ? 1 : 0;
-        this.drawPass(gl, prog, inputTexture, pp.framebuffers[writeIndex], uniforms, width, height);
+        this.drawPass(gl, prog, inputTexture, pp.framebuffers[writeIndex], uniforms, width, height, bindOriginal ? srcTex : undefined);
         inputTexture = pp.textures[writeIndex];
         readIndex = writeIndex;
       }

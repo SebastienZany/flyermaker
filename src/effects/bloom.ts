@@ -5,15 +5,13 @@ precision highp float;
 in vec2 v_texCoord;
 uniform sampler2D u_texture;
 uniform float u_threshold;
-uniform float u_strength;
 out vec4 fragColor;
 
 void main() {
   vec4 color = texture(u_texture, v_texCoord);
   float brightness = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
   float contribution = smoothstep(u_threshold, u_threshold + 0.1, brightness);
-  vec4 bright = color * contribution * u_strength;
-  fragColor = color + bright;
+  fragColor = vec4(color.rgb * contribution, color.a);
 }
 `;
 
@@ -65,6 +63,21 @@ void main() {
 }
 `;
 
+const BLOOM_COMPOSITE_FRAGMENT = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform sampler2D u_original;
+uniform float u_strength;
+out vec4 fragColor;
+
+void main() {
+  vec4 blurred = texture(u_texture, v_texCoord);
+  vec4 original = texture(u_original, v_texCoord);
+  fragColor = vec4(original.rgb + blurred.rgb * u_strength, original.a);
+}
+`;
+
 export const bloom: EffectDefinition = {
   id: 'bloom',
   name: 'Bloom',
@@ -73,7 +86,7 @@ export const bloom: EffectDefinition = {
     radius: { type: 'float', label: 'Radius', value: 8.0, min: 0.1, max: 40.0, step: 0.1 },
     strength: { type: 'float', label: 'Strength', value: 0.8, min: 0.0, max: 2.0, step: 0.01 }
   },
-  passes: 3,
+  passes: 4,
   getFragmentShader() {
     return BLOOM_EXTRACT_FRAGMENT;
   },
@@ -90,17 +103,23 @@ export const bloom: EffectDefinition = {
     if (pass === 0) {
       return {
         fragmentShader: BLOOM_EXTRACT_FRAGMENT,
-        uniforms: { u_threshold: p.threshold.value, u_strength: p.strength.value }
+        uniforms: { u_threshold: p.threshold.value }
       };
     } else if (pass === 1) {
       return {
         fragmentShader: BLOOM_BLUR_H_FRAGMENT,
         uniforms: { u_radius: p.radius.value }
       };
-    } else {
+    } else if (pass === 2) {
       return {
         fragmentShader: BLOOM_BLUR_V_FRAGMENT,
         uniforms: { u_radius: p.radius.value }
+      };
+    } else {
+      return {
+        fragmentShader: BLOOM_COMPOSITE_FRAGMENT,
+        uniforms: { u_strength: p.strength.value },
+        bindOriginal: true
       };
     }
   }

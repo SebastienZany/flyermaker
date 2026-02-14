@@ -40,6 +40,7 @@ export type EffectParam = EffectParamFloat | EffectParamInt | EffectParamColor |
 export interface PassConfig {
   fragmentShader: string;
   uniforms: UniformMap;
+  bindOriginal?: boolean;
 }
 
 export type UniformValue = number | number[] | boolean;
