@@ -1,12 +1,15 @@
 import { EventBus } from './core/EventBus';
 import { History } from './model/History';
 import { DocumentModel } from './model/Document';
-import type { BlendMode, Layer, LayerContent } from './model/Layer';
+import type { BlendMode, Layer, LayerContent, LayerEffect } from './model/Layer';
 import { Layer as LayerModel } from './model/Layer';
 import { Renderer } from './renderer/Renderer';
 import { Viewport } from './renderer/Viewport';
 import { RulerRenderer } from './renderer/RulerRenderer';
 import { LayersPanel } from './ui/LayersPanel';
+import { EffectsPanel } from './ui/EffectsPanel';
+import type { EffectParam } from './effects/Effect';
+import { cloneLayerEffects } from './effects/EffectStack';
 
 declare const __BUILD_TAG__: string;
 
@@ -25,6 +28,7 @@ interface LayerSnapshot {
   width: number;
   height: number;
   content: LayerContent;
+  effects: LayerEffect[];
 }
 
 interface DocumentSnapshot {
@@ -49,6 +53,7 @@ export class App {
   private readonly renderer: Renderer;
   private readonly rulerRenderer = new RulerRenderer();
   private readonly layersPanel: LayersPanel;
+  private readonly effectsPanel: EffectsPanel;
   private activeTool = 'Move';
   private autoSelect = true;
   private activeMenu: string | null = null;
@@ -64,6 +69,9 @@ export class App {
   private panning = false;
   private panStartClientX = 0;
   private panStartClientY = 0;
+  private effectParamBefore: DocumentSnapshot | null = null;
+  private paramCommitTimer: number | null = null;
+  private skipEffectsPanelRender = false;
 
   constructor(private readonly root: HTMLElement) {
     this.doc.width = 800;
@@ -108,6 +116,65 @@ export class App {
           const layer = this.doc.layers.find((entry) => entry.id === id);
           if (!layer) return;
           layer.blendMode = blendMode;
+        });
+      }
+    });
+
+    const effectsRoot = this.root.querySelector<HTMLElement>('#effects-list');
+    if (!effectsRoot) throw new Error('Effects panel missing');
+    this.effectsPanel = new EffectsPanel(effectsRoot, {
+      onAddEffect: (effect) => {
+        this.applyDocumentChange(() => {
+          const layer = this.doc.activeLayer;
+          if (!layer) return;
+          layer.effects.push(effect);
+        });
+      },
+      onRemoveEffect: (index) => {
+        this.applyDocumentChange(() => {
+          const layer = this.doc.activeLayer;
+          if (!layer) return;
+          layer.effects.splice(index, 1);
+        });
+      },
+      onToggleEffect: (index) => {
+        this.applyDocumentChange(() => {
+          const layer = this.doc.activeLayer;
+          if (!layer) return;
+          layer.effects[index].enabled = !layer.effects[index].enabled;
+        });
+      },
+      onUpdateParam: (index, paramKey, value) => {
+        if (!this.effectParamBefore) {
+          this.effectParamBefore = this.captureSnapshot();
+        }
+        const layer = this.doc.activeLayer;
+        if (!layer) return;
+        const param = layer.effects[index].params[paramKey];
+        if (param) (param as EffectParam).value = value as never;
+
+        // Redraw canvas without rebuilding effects panel DOM
+        // (rebuilding would destroy the slider/input being dragged)
+        this.skipEffectsPanelRender = true;
+        this.events.emit('rerender', undefined);
+        this.skipEffectsPanelRender = false;
+
+        // Debounce history commit — one undo entry per drag, not per tick
+        if (this.paramCommitTimer !== null) {
+          window.clearTimeout(this.paramCommitTimer);
+        }
+        this.paramCommitTimer = window.setTimeout(() => {
+          this.commitHistoryEntry(this.effectParamBefore);
+          this.effectParamBefore = null;
+          this.paramCommitTimer = null;
+        }, 300);
+      },
+      onMoveEffect: (fromIndex, toIndex) => {
+        this.applyDocumentChange(() => {
+          const layer = this.doc.activeLayer;
+          if (!layer) return;
+          const [moved] = layer.effects.splice(fromIndex, 1);
+          layer.effects.splice(toIndex, 0, moved);
         });
       }
     });
@@ -463,10 +530,14 @@ export class App {
     this.applyDocumentChange(() => {
       const layer = this.doc.activeLayer;
       if (!layer) return;
-      layer.x = Number(this.root.querySelector<HTMLInputElement>('#transform-x')?.value ?? layer.x);
-      layer.y = Number(this.root.querySelector<HTMLInputElement>('#transform-y')?.value ?? layer.y);
-      layer.width = Math.max(20, Number(this.root.querySelector<HTMLInputElement>('#transform-w')?.value ?? layer.width));
-      layer.height = Math.max(20, Number(this.root.querySelector<HTMLInputElement>('#transform-h')?.value ?? layer.height));
+      const parse = (selector: string, fallback: number) => {
+        const v = Number(this.root.querySelector<HTMLInputElement>(selector)?.value);
+        return Number.isFinite(v) ? v : fallback;
+      };
+      layer.x = parse('#transform-x', layer.x);
+      layer.y = parse('#transform-y', layer.y);
+      layer.width = Math.max(20, parse('#transform-w', layer.width));
+      layer.height = Math.max(20, parse('#transform-h', layer.height));
     });
   }
 
@@ -551,7 +622,8 @@ export class App {
         al.y !== bl.y ||
         al.width !== bl.width ||
         al.height !== bl.height ||
-        !this.contentEqual(al.content, bl.content)
+        !this.contentEqual(al.content, bl.content) ||
+        !this.effectsEqual(al.effects, bl.effects)
       ) return false;
     }
     return true;
@@ -564,6 +636,24 @@ export class App {
         && a.naturalHeight === b.naturalHeight && a.name === b.name;
     }
     return false;
+  }
+
+  private effectsEqual(a: LayerEffect[], b: LayerEffect[]): boolean {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (a[i].definitionId !== b[i].definitionId) return false;
+      if (a[i].enabled !== b[i].enabled) return false;
+      const aKeys = Object.keys(a[i].params);
+      const bKeys = Object.keys(b[i].params);
+      if (aKeys.length !== bKeys.length) return false;
+      for (const key of aKeys) {
+        const ap = a[i].params[key];
+        const bp = b[i].params[key];
+        if (!bp || ap.type !== bp.type) return false;
+        if (JSON.stringify(ap.value) !== JSON.stringify(bp.value)) return false;
+      }
+    }
+    return true;
   }
 
   private captureSnapshot(): DocumentSnapshot {
@@ -582,7 +672,8 @@ export class App {
         y: layer.y,
         width: layer.width,
         height: layer.height,
-        content: { ...layer.content }
+        content: { ...layer.content },
+        effects: cloneLayerEffects(layer.effects)
       }))
     };
   }
@@ -600,6 +691,7 @@ export class App {
       next.y = layer.y;
       next.width = layer.width;
       next.height = layer.height;
+      next.effects = cloneLayerEffects(layer.effects);
       return next;
     });
     this.doc.activeLayerId = snapshot.activeLayerId;
@@ -613,7 +705,19 @@ export class App {
     this.syncHistoryControls();
   }
 
+  private flushPendingParamCommit(): void {
+    if (this.paramCommitTimer !== null) {
+      window.clearTimeout(this.paramCommitTimer);
+      this.paramCommitTimer = null;
+    }
+    if (this.effectParamBefore) {
+      this.commitHistoryEntry(this.effectParamBefore);
+      this.effectParamBefore = null;
+    }
+  }
+
   private applyDocumentChange(change: () => void): void {
+    this.flushPendingParamCommit();
     const before = this.captureSnapshot();
     change();
     this.commitHistoryEntry(before);
@@ -621,6 +725,7 @@ export class App {
   }
 
   private undo(): void {
+    this.flushPendingParamCommit();
     const snapshot = this.history.undo();
     if (!snapshot) return;
     this.restoreSnapshot(snapshot);
@@ -629,6 +734,7 @@ export class App {
   }
 
   private redo(): void {
+    this.flushPendingParamCommit();
     const snapshot = this.history.redo();
     if (!snapshot) return;
     this.restoreSnapshot(snapshot);
@@ -693,6 +799,10 @@ export class App {
 
   private refreshUI(): void {
     this.layersPanel.render(this.doc.layers, this.doc.activeLayerId);
+    if (!this.skipEffectsPanelRender) {
+      const activeLayer = this.doc.activeLayer;
+      this.effectsPanel.render(activeLayer?.effects ?? [], !!activeLayer);
+    }
     this.updateViewportLayout();
     this.renderer.render(this.doc, this.activeTool);
 
@@ -738,7 +848,7 @@ export class App {
       <div class="main">
         <div class="toolbar"><button class="tool-btn active" data-tool="Move" data-info="Move tool: drag a selected layer to reposition it. Drag corner handles to resize.">Move</button><button class="tool-btn" data-tool="Select" data-info="Select tool: keeps layer focus without moving; useful when adjusting panel values.">Select</button><button class="tool-btn" data-tool="Hand" data-info="Hand tool: click-drag in the canvas to pan the whole document view.">Hand</button><button class="tool-btn" data-tool="Zoom" data-info="Zoom tool: use wheel or +/- controls to zoom the entire document and rulers in 5% increments.">Zoom</button></div>
         <div class="canvas-wrapper"><canvas id="ruler-h" class="ruler-h" height="20"></canvas><div class="canvas-with-ruler"><canvas id="ruler-v" class="ruler-v" width="20"></canvas><div class="canvas-area"><div id="canvas-wrap" class="canvas-wrap"><canvas id="main-canvas" width="800" height="600"></canvas></div><div class="zoom-controls"><button class="zoom-btn" id="zoom-out" data-info="Zoom out by 5%.">−</button><div class="zoom-level" id="zoom-level">100%</div><button class="zoom-btn" id="zoom-in" data-info="Zoom in by 5%.">+</button><button class="zoom-btn" id="zoom-fit" data-info="Fit: scales the entire document to fit inside the current canvas viewport.">Fit</button></div></div></div></div>
-        <div class="panels-right"><div class="panel"><div class="panel-header panel-header-actions"><span class="panel-title">Layers</span><button id="add-layer" class="opt-btn panel-add-btn" data-info="Import an image as a new layer.">+ Image</button></div><div class="panel-body"><div id="layers-list" class="layers-list"></div></div></div><div class="panel"><div class="panel-header"><span class="panel-title">Transform</span></div><div class="panel-body transform-grid"><label>X <input id="transform-x" class="opt-select" type="number"></label><label>Y <input id="transform-y" class="opt-select" type="number"></label><label>W <input id="transform-w" class="opt-select" type="number"></label><label>H <input id="transform-h" class="opt-select" type="number"></label></div></div></div>
+        <div class="panels-right"><div class="panel"><div class="panel-header panel-header-actions"><span class="panel-title">Layers</span><button id="add-layer" class="opt-btn panel-add-btn" data-info="Import an image as a new layer.">+ Image</button></div><div class="panel-body"><div id="layers-list" class="layers-list"></div></div></div><div class="panel"><div class="panel-header"><span class="panel-title">Transform</span></div><div class="panel-body transform-grid"><label>X <input id="transform-x" class="opt-select" type="number"></label><label>Y <input id="transform-y" class="opt-select" type="number"></label><label>W <input id="transform-w" class="opt-select" type="number"></label><label>H <input id="transform-h" class="opt-select" type="number"></label></div></div><div class="panel panel-effects"><div class="panel-header"><span class="panel-title">Effects</span></div><div class="panel-body"><div id="effects-list" class="effects-list"></div></div></div></div>
       </div>
       <div class="statusbar"><div class="status-item status-help-only" id="status-help">Move tool: drag selected layers to reposition. Drag corner handles to resize.</div></div>
       <input id="file-input" type="file" accept="image/*" hidden />

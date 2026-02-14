@@ -82,57 +82,47 @@ interface EffectParam {
 7. **Color Grading** — lift/gamma/gain, hue shift, saturation
 8. **Grain/Noise** — film grain overlay
 
-## Project Structure
+## Project Structure (Actual)
 ```
 src/
-  main.ts, app.ts
-  styles/              — CSS from mockup (variables, panels, toolbar, canvas)
+  main.ts               — entry point, registers effects, bootstraps App
+  app.ts                — main App class (UI, event handling, state, undo/redo)
+  styles/
+    main.css             — all UI styling (panels, canvas, rulers, toolbar, effects)
   core/
-    EventBus.ts, types.ts, constants.ts, math.ts
+    EventBus.ts          — typed pub/sub event system
   model/
-    Document.ts, Layer.ts, EffectStack.ts, History.ts
+    Document.ts          — document dimensions, layers, active layer
+    Layer.ts             — Layer with LayerContent union + effects array
+    History.ts           — snapshot-based undo/redo
   effects/
-    Effect.ts           — Effect interface + EffectParam types
-    EffectRegistry.ts   — registers all available effects by name
-    shaders/
-      common.glsl       — shared utilities (random, blur weights, color space)
-      bloom.ts           — Bloom effect module + shader
-      halation.ts
-      iridescence.ts
-      blur.ts
-      chromatic-aberration.ts
-      vignette.ts
-      color-grading.ts
-      grain.ts
+    Effect.ts            — Effect/EffectParam/PassConfig types, createLayerEffect()
+    EffectRegistry.ts    — singleton registry for available effect definitions
+    EffectRenderer.ts    — WebGL 2 context, shader compilation, ping-pong FBOs, caching
+    EffectStack.ts       — cache key generation, deep clone, eviction utilities
+    registerEffects.ts   — registers all built-in effects at startup
+    blur.ts              — Gaussian Blur (separable 2-pass)
+    bloom.ts             — Bloom (4-pass: extract + H-blur + V-blur + composite)
+    vignette.ts          — Vignette (radial darkening)
+    colorGrading.ts      — Color Grading (brightness/contrast/sat/hue/lift/gamma/gain)
   renderer/
-    Renderer.ts          — main render loop
-    Compositor.ts        — Canvas 2D layer compositing with blend modes
-    EffectRenderer.ts    — WebGL context, ping-pong FBOs, runs effect shaders
-    Viewport.ts
-    RulerRenderer.ts
-    OverlayRenderer.ts   — transform handles, guides
-  tools/
-    ToolManager.ts, BaseTool.ts
-    MoveTool.ts          — select/move/scale/rotate layers
-    HandTool.ts          — pan
-    ZoomTool.ts
-    CropTool.ts
-    TextTool.ts
+    Renderer.ts          — main render loop (compositor + selection overlay)
+    Compositor.ts        — Canvas 2D layer compositing with WebGL effect integration
+    Viewport.ts          — zoom/pan state + math
+    RulerRenderer.ts     — horizontal/vertical ruler drawing
   ui/
-    UIManager.ts, MenuBar.ts, OptionsBar.ts, Toolbar.ts, StatusBar.ts
-    panels/
-      LayersPanel.ts
-      EffectsPanel.ts    — shows effect stack for active layer, add/remove/reorder/toggle effects, parameter controls
-      TransformPanel.ts
-      ColorPanel.ts
-  commands/
-    Command.ts
-    LayerCommand.ts      — add/delete/reorder/visibility/blend/opacity
-    TransformCommand.ts  — move/scale/rotate
-    EffectCommand.ts     — add/remove/reorder/toggle/param-change effects
-    ImageImportCommand.ts
+    LayersPanel.ts       — layer list panel with controls
+    EffectsPanel.ts      — effect stack panel with auto-generated param controls
+```
+
+## Planned Structure (Future Phases)
+```
+src/
+  effects/
+    halation.ts, iridescence.ts, chromatic-aberration.ts, grain.ts
+  tools/
+    ToolManager.ts, MoveTool.ts, HandTool.ts, TextTool.ts
   io/
-    ImageImporter.ts     — file upload, URL fetch, drag-and-drop
     Exporter.ts          — PNG/JPEG export
 ```
 
@@ -185,30 +175,35 @@ src/
 - All Commands from phases 4–6 wired in
 - **Verify:** undo/redo all operations
 
-### Phase 8: WebGL Effects Pipeline ← core differentiator
-- `EffectRenderer`: WebGL 2 context, shader compilation, ping-pong framebuffers
-- `Effect` interface, `EffectRegistry`
-- Common GLSL utilities (random, blur, color space conversions)
-- Per-layer `EffectStack` (ordered list of effects)
-- Renderer integration: source → EffectRenderer → processed canvas → Compositor
-- Cache processed result; invalidate on source change or param change
-- **Verify:** can programmatically apply a shader to a layer
+### Phase 8: WebGL Effects Pipeline ← core differentiator — COMPLETE
+- `EffectRenderer`: WebGL 2 context, shader compilation + caching, ping-pong framebuffers
+- `Effect` interface with typed `EffectParam` system (float/int/color/boolean/select)
+- `EffectRegistry` singleton for registering available effect definitions
+- `EffectStack` utilities: cache key generation, deep clone for undo snapshots, per-layer cache eviction
+- `PassConfig` with `bindOriginal` flag for multi-texture composite passes (e.g. bloom)
+- `UNPACK_FLIP_Y_WEBGL` for correct texture orientation
+- Compositor integration: layers with enabled effects → WebGL processing → cached canvas → Canvas 2D compositing
+- **Verified:** shader pipeline processes layers, cache prevents redundant re-renders
 
-### Phase 9: Effects Panel UI
-- `EffectsPanel`: shows stack for active layer
-- Add effect (dropdown of registered effects)
-- Remove, reorder (drag), toggle enable/disable
-- Auto-generated parameter controls from `EffectParam` definitions (sliders, color pickers, checkboxes, dropdowns)
-- `EffectCommand` for undo
-- Live preview as params change
-- **Verify:** add effect → tweak params → see result in real time
+### Phase 9: Effects Panel UI — COMPLETE
+- `EffectsPanel`: shows effect stack for active layer in right sidebar
+- Add effect dropdown populated from `EffectRegistry`
+- Remove, reorder (up/down buttons), toggle enable/disable per effect
+- Auto-generated parameter controls from `EffectParam` definitions:
+  - Float/int: range slider + number input (bidirectional)
+  - Color: native color picker with RGB float conversion
+  - Boolean: checkbox
+  - Select: dropdown
+- Full undo/redo via snapshot-based history (effects cloned in snapshots)
+- Live preview as params change — each slider drag triggers re-render
+- **Verified:** add effect → tweak params → see result update on canvas in real time
 
-### Phase 10: First Effects Batch
-- **Gaussian Blur** — separable 2-pass, `sigma` param
-- **Bloom** — threshold → blur → additive blend (3-pass: extract, H-blur, V-blur + composite)
-- **Vignette** — center, radius, softness, color
-- **Color Grading** — brightness, contrast, saturation, hue shift, lift/gamma/gain
-- **Verify:** each effect works independently and stacked
+### Phase 10: First Effects Batch — COMPLETE
+- **Gaussian Blur** — separable 2-pass (H + V), `sigma` param, GLSL loop with dynamic kernel radius
+- **Bloom** — 4-pass pipeline: (1) extract bright areas via luminance threshold, (2) H-blur, (3) V-blur, (4) composite blurred highlights onto original via `bindOriginal`/`u_original` sampler. Params: threshold, radius, strength
+- **Vignette** — radial darkening from center. Uses `1.0 - smoothstep(radius - softness, radius, dist)` for correct edge ordering. Params: centerX, centerY, radius, softness, color
+- **Color Grading** — brightness, contrast, saturation (luma-preserving), hue shift (HSV), lift/gamma/gain color correction. Single-pass shader
+- **Verified:** each effect works independently and stacked (e.g. Bloom → Color Grading → Blur)
 
 ### Phase 11: Advanced Effects
 - **Halation** — like bloom but with warm color shift, affects specific luminance ranges
@@ -228,7 +223,7 @@ src/
 
 **Non-destructive effects:** Each layer stores source pixels unchanged. The effect stack is metadata. `EffectRenderer` processes source → output on demand. Changing a param just re-runs shaders — original data is never touched.
 
-**WebGL ping-pong for multi-pass:** Two framebuffers alternate as input/output. Bloom needs 3+ passes (threshold extract → H-blur → V-blur → composite). The ping-pong pattern handles arbitrary pass counts cleanly.
+**WebGL ping-pong for multi-pass:** Two framebuffers alternate as input/output. Bloom needs 3+ passes (threshold extract → H-blur → V-blur → composite). The ping-pong pattern handles arbitrary pass counts cleanly. A dedicated third texture (`effectOriginalTexture`) snapshots the effect's input before multi-pass processing begins — this is necessary because intermediate passes overwrite the ping-pong textures, so any pass that needs the pre-effect image (via `bindOriginal`/`u_original`) must read from this stable snapshot instead.
 
 **Effect caching:** Each layer caches its processed (post-effects) canvas. Invalidated when: source pixels change, effect params change, effects added/removed/reordered. If nothing changed, Compositor reuses the cached result. This makes viewport changes (zoom/pan) instant.
 
@@ -295,6 +290,7 @@ The `EventBus` emits a single `rerender` event that triggers a full `refreshUI()
 - **Pro:** Impossible to have stale UI — every state change refreshes everything
 - **Con:** Redundant work on targeted changes (e.g. toggling visibility redraws rulers)
 - **Acceptable because:** Canvas 2D compositing for <50 layers is sub-millisecond, DOM updates are lightweight with current panel complexity
+- **Exception:** Effect param updates skip the effects panel rebuild (`skipEffectsPanelRender` flag) to avoid destroying the slider/input being dragged. History commits are debounced (300ms) so continuous slider drags produce one undo entry.
 
 If performance becomes an issue, the fix is targeted: add fine-grained events (`layer-changed`, `viewport-changed`) and have each UI component subscribe only to what it needs. The EventBus already supports this — it's a design knob, not a rewrite.
 
@@ -308,9 +304,9 @@ All UI is vanilla DOM generated by `App.template()` and wired by `bindControls()
 
 This works well at current complexity. If the effects panel (Phase 9) introduces many interactive controls, extracting more panel components with the same callback pattern used by `LayersPanel` keeps things manageable without introducing a framework.
 
-### Layer Effects Placeholder
+### Layer Effects System (Phases 8–10)
 
-`LayerEffect[] = never[]` is declared on Layer but intentionally unused. This reserves the field in the model and snapshot system so that Phase 8 (WebGL effects pipeline) can add effects without changing the Layer constructor signature or snapshot format. The `never` type ensures no code accidentally tries to use effects before they're implemented.
+Each `Layer` has an `effects: LayerEffect[]` array. A `LayerEffect` references an `EffectDefinition` by ID and stores per-instance parameter values. The `EffectsPanel` auto-generates UI controls from `EffectParam` type definitions (with NaN guards on number inputs falling back to the current slider value). The `EffectRenderer` processes effects through a WebGL 2 ping-pong pipeline with three textures: two for ping-pong alternation, plus a dedicated `effectOriginalTexture` that snapshots the effect's input before multi-pass processing (preventing intermediate passes from overwriting data needed by composite passes). Per-layer caching is bounded to one cached canvas per layer, evicted on param change. The `Compositor` checks each layer for enabled effects and routes through WebGL processing before Canvas 2D compositing. Multi-texture support via `PassConfig.bindOriginal` enables effects like bloom that need to reference the pre-effect image via `u_original` sampler in a composite pass. Snapshot-based undo/redo deep-clones effect params to capture/restore effect state.
 
 ## Verification
 Each phase: `npx vite dev` + visual check + Playwright screenshot. Unit tests (`vitest`) for model/math. The key end-to-end test: import image → add bloom effect → adjust intensity → change blend mode → export PNG → verify output.

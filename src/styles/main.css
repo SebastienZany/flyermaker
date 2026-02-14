@@ -161,3 +161,53 @@ button, input, select { font: inherit; }
 .transform-grid { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
 .transform-grid label { display:flex; flex-direction:column; gap:4px; color: var(--text-dim); font-size:10px; }
 .transform-grid input { width:100%; }
+
+.panel-effects { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.panel-effects .panel-body { flex: 1; overflow-y: auto; min-height: 0; }
+.effects-list { display: flex; flex-direction: column; gap: 6px; }
+.effects-empty { color: var(--text-dim); font-size: 10px; text-align: center; padding: 12px 0; }
+.effects-add-row { margin-bottom: 4px; }
+.effects-add-select { width: 100%; height: 26px; }
+
+.effect-card {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-dark);
+  overflow: hidden;
+}
+.effect-card.effect-disabled { opacity: 0.5; }
+
+.effect-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 6px; background: var(--bg-mid);
+  border-bottom: 1px solid var(--border);
+}
+.effect-toggle { margin: 0; cursor: pointer; }
+.effect-title { flex: 1; font-size: 11px; color: var(--text-bright); font-weight: 500; }
+.effect-actions { display: flex; gap: 2px; }
+.effect-action-btn {
+  width: 18px; height: 18px; border: none; background: transparent;
+  color: var(--text-dim); cursor: pointer; font-size: 9px; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+}
+.effect-action-btn:hover { background: var(--bg-hover); color: var(--text); }
+.effect-remove-btn:hover { color: #ff6b6b; }
+
+.effect-params { padding: 6px; display: flex; flex-direction: column; gap: 5px; }
+.effect-param-row { display: flex; align-items: center; gap: 6px; }
+.effect-param-label {
+  min-width: 60px; font-size: 10px; color: var(--text-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.effect-param-slider-wrap { flex: 1; display: flex; align-items: center; gap: 4px; }
+.effect-param-slider { flex: 1; height: 14px; cursor: pointer; accent-color: var(--accent); }
+.effect-param-number {
+  width: 48px; height: 20px; background: var(--bg-darkest); border: 1px solid var(--border);
+  color: var(--text); border-radius: 3px; padding: 0 4px; font-size: 10px; text-align: right;
+}
+.effect-param-color {
+  width: 32px; height: 20px; padding: 0; border: 1px solid var(--border);
+  border-radius: 3px; cursor: pointer; background: none;
+}
+.effect-param-checkbox { margin: 0; cursor: pointer; accent-color: var(--accent); }
+.effect-param-select { flex: 1; height: 20px; font-size: 10px; }

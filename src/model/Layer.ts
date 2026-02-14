@@ -10,7 +10,8 @@ export interface ImageContent {
 
 export type LayerContent = ImageContent;
 
-export type LayerEffect = never; // placeholder for future effects
+import type { LayerEffect } from '../effects/Effect';
+export type { LayerEffect };
 
 export class Layer {
   readonly id: string;
@@ -21,6 +22,7 @@ export class Layer {
   blendMode: BlendMode = 'source-over';
   content: LayerContent;
   effects: LayerEffect[] = [];
+  effectCacheKey = '';
 
   x = 0;
   y = 0;

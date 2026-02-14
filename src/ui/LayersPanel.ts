@@ -53,7 +53,12 @@ export class LayersPanel {
         const blend = document.createElement('select');
         blend.className = 'blend-select layer-blend';
         blend.title = 'Layer blend mode';
-        blend.innerHTML = BLEND_OPTIONS.map((value) => `<option value="${value}">${value}</option>`).join('');
+        for (const mode of BLEND_OPTIONS) {
+          const opt = document.createElement('option');
+          opt.value = mode;
+          opt.textContent = mode;
+          blend.append(opt);
+        }
         blend.value = layer.blendMode;
         blend.onchange = (event) => {
           event.stopPropagation();
