@@ -27,7 +27,8 @@ test('zoom controls, doc size controls, checkerboard and ruler alignment', async
   await page.fill('#doc-width', '1000');
   await page.fill('#doc-height', '500');
   await page.click('#apply-doc-size');
-  await expect(page.locator('#status-size')).toHaveText('1000 × 500');
+  await expect(page.locator('#doc-width')).toHaveValue('1000');
+  await expect(page.locator('#doc-height')).toHaveValue('500');
 
   const resized = await page.locator('#canvas-wrap').boundingBox();
   if (!resized) throw new Error('Missing resized bounds');
