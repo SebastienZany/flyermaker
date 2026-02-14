@@ -287,6 +287,21 @@ export class App {
 
   private onCanvasDown(point: { x: number; y: number }): void {
     if (this.activeTool !== 'Move') return;
+    const activeLayer = this.doc.activeLayer;
+    if (activeLayer) {
+      const activeHandle = this.hitHandle(activeLayer, point.x, point.y);
+      if (activeHandle) {
+        this.dragHistoryBefore = this.captureSnapshot();
+        this.dragMode = activeHandle;
+        this.dragLayerId = activeLayer.id;
+        this.dragStartX = point.x;
+        this.dragStartY = point.y;
+        this.dragOrigin = { x: activeLayer.x, y: activeLayer.y, width: activeLayer.width, height: activeLayer.height };
+        this.events.emit('rerender', undefined);
+        return;
+      }
+    }
+
     const layer = this.findLayerAtPoint(point.x, point.y);
     if (!layer) return;
     this.dragHistoryBefore = this.captureSnapshot();
@@ -349,7 +364,7 @@ export class App {
   private findLayerAtPoint(x: number, y: number): Layer | null {
     for (let i = this.doc.layers.length - 1; i >= 0; i -= 1) {
       const layer = this.doc.layers[i];
-      if (!layer.visible || !layer.image) continue;
+      if (!layer.visible) continue;
       if (x >= layer.x && x <= layer.x + layer.width && y >= layer.y && y <= layer.y + layer.height) return layer;
     }
     return null;
