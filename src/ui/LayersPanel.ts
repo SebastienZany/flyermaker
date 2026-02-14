@@ -43,7 +43,9 @@ export class LayersPanel {
 
         const meta = document.createElement('div');
         meta.className = 'layer-meta';
-        meta.textContent = `${layer.image ? `${layer.image.width}×${layer.image.height}` : 'Empty'}`;
+        meta.textContent = layer.content.type === 'image'
+          ? `${layer.content.naturalWidth}×${layer.content.naturalHeight}`
+          : layer.content.type;
 
         const controls = document.createElement('div');
         controls.className = 'layer-controls';
