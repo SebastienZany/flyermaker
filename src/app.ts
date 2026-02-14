@@ -155,7 +155,7 @@ export class App {
       item.addEventListener('click', async () => {
         const action = item.dataset.menuAction;
         if (!action) return;
-        await this.handleMenuAction(action);
+        await this.runSafeAction(() => this.handleMenuAction(action));
         this.activeMenu = null;
         this.syncMenuState();
       });
@@ -234,7 +234,7 @@ export class App {
     fileInput?.addEventListener('change', async (event) => {
       const file = (event.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      await this.importFile(file);
+      await this.runSafeAction(() => this.importFile(file));
       (event.target as HTMLInputElement).value = '';
     });
 
@@ -245,7 +245,7 @@ export class App {
       event.preventDefault();
       canvasWrap.classList.remove('drag-over');
       const file = event.dataTransfer?.files?.[0];
-      if (file) await this.importFile(file);
+      if (file) await this.runSafeAction(() => this.importFile(file));
     });
 
     canvas.addEventListener('mousemove', (event) => {
@@ -479,7 +479,16 @@ export class App {
   private async promptImportUrl(): Promise<void> {
     const value = window.prompt('Import image URL');
     if (!value) return;
-    await this.importFromUrl(value.trim());
+    await this.runSafeAction(() => this.importFromUrl(value.trim()));
+  }
+
+  private async runSafeAction(action: () => Promise<void>): Promise<void> {
+    try {
+      await action();
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'Unknown error';
+      this.setHoveredHelp(`Action failed: ${reason}. URL imports may require CORS support.`);
+    }
   }
 
   private applyZoom(delta: number, clientX?: number, clientY?: number): void {
