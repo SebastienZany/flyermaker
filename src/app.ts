@@ -309,9 +309,7 @@ export class App {
       if (file) await this.runSafeAction(() => this.importFile(file));
     });
 
-    canvas.addEventListener('mousemove', (event) => {
-      const point = this.screenToCanvas(event, canvas);
-
+    window.addEventListener('mousemove', (event) => {
       if (this.panning) {
         const dx = event.clientX - this.panStartClientX;
         const dy = event.clientY - this.panStartClientY;
@@ -321,7 +319,9 @@ export class App {
         this.events.emit('rerender', undefined);
         return;
       }
-      this.onCanvasDrag(point);
+
+      if (!this.dragMode) return;
+      this.onCanvasDrag(this.screenToCanvasFromClient(event.clientX, event.clientY, canvas));
     });
 
     canvas.addEventListener('mousedown', (event) => {
@@ -452,10 +452,14 @@ export class App {
   }
 
   private screenToCanvas(event: MouseEvent, canvas: HTMLCanvasElement): { x: number; y: number } {
+    return this.screenToCanvasFromClient(event.clientX, event.clientY, canvas);
+  }
+
+  private screenToCanvasFromClient(clientX: number, clientY: number, canvas: HTMLCanvasElement): { x: number; y: number } {
     const rect = canvas.getBoundingClientRect();
     return {
-      x: ((event.clientX - rect.left) / rect.width) * canvas.width,
-      y: ((event.clientY - rect.top) / rect.height) * canvas.height
+      x: ((clientX - rect.left) / rect.width) * canvas.width,
+      y: ((clientY - rect.top) / rect.height) * canvas.height
     };
   }
 
