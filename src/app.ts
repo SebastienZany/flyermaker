@@ -1,7 +1,7 @@
 import { EventBus } from './core/EventBus';
 import { History } from './model/History';
 import { DocumentModel } from './model/Document';
-import type { BlendMode, Layer } from './model/Layer';
+import type { BlendMode, Layer, LayerContent } from './model/Layer';
 import { Layer as LayerModel } from './model/Layer';
 import { Renderer } from './renderer/Renderer';
 import { Viewport } from './renderer/Viewport';
@@ -24,7 +24,7 @@ interface LayerSnapshot {
   y: number;
   width: number;
   height: number;
-  image: Layer['image'];
+  content: LayerContent;
 }
 
 interface DocumentSnapshot {
@@ -210,13 +210,7 @@ export class App {
     });
 
     this.root.querySelector('#add-layer')?.addEventListener('click', () => {
-      this.applyDocumentChange(() => {
-        const layer = this.doc.addLayer(new LayerModel(`Layer ${this.doc.layers.length + 1}`));
-        layer.width = this.doc.width * 0.4;
-        layer.height = this.doc.height * 0.4;
-        layer.x = this.doc.width * 0.3;
-        layer.y = this.doc.height * 0.3;
-      });
+      this.root.querySelector<HTMLInputElement>('#file-input')?.click();
     });
 
     this.root.querySelector('#undo-action')?.addEventListener('click', () => this.undo());
@@ -511,10 +505,16 @@ export class App {
 
   private async importImage(src: string, name: string): Promise<void> {
     const image = await this.loadImage(src);
+    const content: LayerContent = {
+      type: 'image',
+      source: image,
+      naturalWidth: image.width,
+      naturalHeight: image.height,
+      name
+    };
     this.applyDocumentChange(() => {
       const previous = this.doc.activeLayerId;
-      const layer = this.doc.addLayer(new LayerModel(name));
-      layer.image = { source: image, width: image.width, height: image.height, name };
+      const layer = this.doc.addLayer(new LayerModel(name, content));
       const scale = Math.min(this.doc.width / image.width, this.doc.height / image.height, 1);
       layer.width = Math.round(image.width * scale);
       layer.height = Math.round(image.height * scale);
@@ -551,13 +551,19 @@ export class App {
         al.y !== bl.y ||
         al.width !== bl.width ||
         al.height !== bl.height ||
-        al.image?.source !== bl.image?.source ||
-        al.image?.width !== bl.image?.width ||
-        al.image?.height !== bl.image?.height ||
-        al.image?.name !== bl.image?.name
+        !this.contentEqual(al.content, bl.content)
       ) return false;
     }
     return true;
+  }
+
+  private contentEqual(a: LayerContent, b: LayerContent): boolean {
+    if (a.type !== b.type) return false;
+    if (a.type === 'image' && b.type === 'image') {
+      return a.source === b.source && a.naturalWidth === b.naturalWidth
+        && a.naturalHeight === b.naturalHeight && a.name === b.name;
+    }
+    return false;
   }
 
   private captureSnapshot(): DocumentSnapshot {
@@ -576,7 +582,7 @@ export class App {
         y: layer.y,
         width: layer.width,
         height: layer.height,
-        image: layer.image ? { ...layer.image } : null
+        content: { ...layer.content }
       }))
     };
   }
@@ -585,7 +591,7 @@ export class App {
     this.doc.width = snapshot.width;
     this.doc.height = snapshot.height;
     this.doc.layers = snapshot.layers.map((layer) => {
-      const next = new LayerModel(layer.name, layer.id);
+      const next = new LayerModel(layer.name, { ...layer.content }, layer.id);
       next.visible = layer.visible;
       next.locked = layer.locked;
       next.opacity = layer.opacity;
@@ -594,7 +600,6 @@ export class App {
       next.y = layer.y;
       next.width = layer.width;
       next.height = layer.height;
-      next.image = layer.image ? { ...layer.image } : null;
       return next;
     });
     this.doc.activeLayerId = snapshot.activeLayerId;
@@ -733,7 +738,7 @@ export class App {
       <div class="main">
         <div class="toolbar"><button class="tool-btn active" data-tool="Move" data-info="Move tool: drag a selected layer to reposition it. Drag corner handles to resize.">Move</button><button class="tool-btn" data-tool="Select" data-info="Select tool: keeps layer focus without moving; useful when adjusting panel values.">Select</button><button class="tool-btn" data-tool="Hand" data-info="Hand tool: click-drag in the canvas to pan the whole document view.">Hand</button><button class="tool-btn" data-tool="Zoom" data-info="Zoom tool: use wheel or +/- controls to zoom the entire document and rulers in 5% increments.">Zoom</button></div>
         <div class="canvas-wrapper"><canvas id="ruler-h" class="ruler-h" height="20"></canvas><div class="canvas-with-ruler"><canvas id="ruler-v" class="ruler-v" width="20"></canvas><div class="canvas-area"><div id="canvas-wrap" class="canvas-wrap"><canvas id="main-canvas" width="800" height="600"></canvas></div><div class="zoom-controls"><button class="zoom-btn" id="zoom-out" data-info="Zoom out by 5%.">−</button><div class="zoom-level" id="zoom-level">100%</div><button class="zoom-btn" id="zoom-in" data-info="Zoom in by 5%.">+</button><button class="zoom-btn" id="zoom-fit" data-info="Fit: scales the entire document to fit inside the current canvas viewport.">Fit</button></div></div></div></div>
-        <div class="panels-right"><div class="panel"><div class="panel-header panel-header-actions"><span class="panel-title">Layers</span><button id="add-layer" class="opt-btn panel-add-btn" data-info="Create a new empty layer at the document center.">+ Layer</button></div><div class="panel-body"><div id="layers-list" class="layers-list"></div></div></div><div class="panel"><div class="panel-header"><span class="panel-title">Transform</span></div><div class="panel-body transform-grid"><label>X <input id="transform-x" class="opt-select" type="number"></label><label>Y <input id="transform-y" class="opt-select" type="number"></label><label>W <input id="transform-w" class="opt-select" type="number"></label><label>H <input id="transform-h" class="opt-select" type="number"></label></div></div></div>
+        <div class="panels-right"><div class="panel"><div class="panel-header panel-header-actions"><span class="panel-title">Layers</span><button id="add-layer" class="opt-btn panel-add-btn" data-info="Import an image as a new layer.">+ Image</button></div><div class="panel-body"><div id="layers-list" class="layers-list"></div></div></div><div class="panel"><div class="panel-header"><span class="panel-title">Transform</span></div><div class="panel-body transform-grid"><label>X <input id="transform-x" class="opt-select" type="number"></label><label>Y <input id="transform-y" class="opt-select" type="number"></label><label>W <input id="transform-w" class="opt-select" type="number"></label><label>H <input id="transform-h" class="opt-select" type="number"></label></div></div></div>
       </div>
       <div class="statusbar"><div class="status-item status-help-only" id="status-help">Move tool: drag selected layers to reposition. Drag corner handles to resize.</div></div>
       <input id="file-input" type="file" accept="image/*" hidden />
