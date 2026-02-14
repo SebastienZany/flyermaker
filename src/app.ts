@@ -58,6 +58,7 @@ export class App {
   private autoSelect = true;
   private activeMenu: string | null = null;
   private hoveredHelp: string | null = null;
+  private menuCloseTimer: number | null = null;
 
   private dragMode: DragMode | null = null;
   private dragLayerId: string | null = null;
@@ -114,6 +115,7 @@ export class App {
 
     menuGroups.forEach((group) => {
       group.addEventListener('mouseenter', () => {
+        this.cancelMenuClose();
         if (!this.activeMenu) return;
         const menu = group.dataset.menu;
         if (!menu || menu === this.activeMenu) return;
@@ -122,10 +124,11 @@ export class App {
       });
     });
 
+    menubar?.addEventListener('mouseenter', () => this.cancelMenuClose());
+
     menubar?.addEventListener('mouseleave', () => {
       if (!this.activeMenu) return;
-      this.activeMenu = null;
-      this.syncMenuState();
+      this.scheduleMenuClose();
     });
 
     this.root.querySelectorAll<HTMLElement>('.menu-item').forEach((item) => {
@@ -133,6 +136,7 @@ export class App {
         event.stopPropagation();
         const menu = item.dataset.menu;
         if (!menu) return;
+        this.cancelMenuClose();
         this.activeMenu = this.activeMenu === menu ? null : menu;
         this.syncMenuState();
       });
@@ -302,6 +306,21 @@ export class App {
       entry.addEventListener('focus', show);
       entry.addEventListener('blur', hide);
     });
+  }
+
+  private scheduleMenuClose(): void {
+    this.cancelMenuClose();
+    this.menuCloseTimer = window.setTimeout(() => {
+      this.activeMenu = null;
+      this.syncMenuState();
+      this.menuCloseTimer = null;
+    }, 140);
+  }
+
+  private cancelMenuClose(): void {
+    if (this.menuCloseTimer === null) return;
+    window.clearTimeout(this.menuCloseTimer);
+    this.menuCloseTimer = null;
   }
 
   private onCanvasDown(point: { x: number; y: number }): void {
